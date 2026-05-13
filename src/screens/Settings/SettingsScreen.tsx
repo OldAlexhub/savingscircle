@@ -19,7 +19,7 @@ import { Colors, FontSize, Radius, Spacing } from '../../theme';
 
 const VERSION = '1.0.0';
 const BUILD = '1';
-const SUPPORT_EMAIL = 'support@oldalexhub.com';
+const SUPPORT_EMAIL = 'info@oldalexhub.com';
 
 export default function SettingsScreen() {
   const { circles } = useCircles();
@@ -68,9 +68,7 @@ export default function SettingsScreen() {
 
         <SectionTitle title="About" />
         <Card>
-          <InfoRow label="Developed by" value="Mohamed Gad" />
-          <Divider />
-          <InfoRow label="Studio" value="Old Alex Hub" />
+          <InfoRow label="Developed by" value="Old Alex Hub, LLC" />
           <Divider />
           <InfoRow label="Version" value={`${VERSION} (${BUILD})`} />
           <Divider />

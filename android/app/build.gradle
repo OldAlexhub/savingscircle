@@ -37,10 +37,12 @@ android {
                 keyAlias MYAPP_UPLOAD_KEY_ALIAS
                 keyPassword MYAPP_UPLOAD_KEY_PASSWORD
             } else {
-                storeFile file('debug.keystore')
-                storePassword 'android'
-                keyAlias 'androiddebugkey'
-                keyPassword 'android'
+                throw new GradleException(
+                    "\n\n❌  RELEASE SIGNING NOT CONFIGURED\n" +
+                    "    Run this command first to generate your keystore:\n\n" +
+                    "        python release.py signing\n\n" +
+                    "    Then rebuild with: python release.py aab\n"
+                )
             }
         }
     }
