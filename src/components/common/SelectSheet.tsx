@@ -37,23 +37,26 @@ export default function SelectSheet({
       <View style={styles.sheet}>
         <View style={styles.handle} />
         <Text style={styles.title}>{title}</Text>
-        {options.map(opt => (
-          <TouchableOpacity
-            key={opt.value}
-            style={[styles.option, selectedValue === opt.value && styles.selected]}
-            onPress={() => { onSelect(opt.value); onClose(); }}
-            activeOpacity={0.7}>
-            <View style={styles.optionContent}>
-              <Text style={[styles.optionLabel, selectedValue === opt.value && styles.selectedLabel]}>
-                {opt.label}
-              </Text>
-              {!!opt.description && (
-                <Text style={styles.optionDesc}>{opt.description}</Text>
-              )}
-            </View>
-            {selectedValue === opt.value && <Text style={styles.check}>✓</Text>}
-          </TouchableOpacity>
-        ))}
+        {options.map(option => {
+          const selected = selectedValue === option.value;
+          return (
+            <TouchableOpacity
+              key={option.value}
+              style={[styles.option, selected && styles.selected]}
+              onPress={() => { onSelect(option.value); onClose(); }}
+              activeOpacity={0.7}>
+              <View style={styles.optionContent}>
+                <Text style={[styles.optionLabel, selected && styles.selectedLabel]}>
+                  {option.label}
+                </Text>
+                {!!option.description && (
+                  <Text style={styles.optionDesc}>{option.description}</Text>
+                )}
+              </View>
+              {selected && <View style={styles.checkDot} />}
+            </TouchableOpacity>
+          );
+        })}
         <TouchableOpacity style={styles.cancelBtn} onPress={onClose}>
           <Text style={styles.cancelText}>Cancel</Text>
         </TouchableOpacity>
@@ -66,8 +69,8 @@ const styles = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: Colors.overlay },
   sheet: {
     backgroundColor: Colors.surface,
-    borderTopLeftRadius: Radius.xl,
-    borderTopRightRadius: Radius.xl,
+    borderTopLeftRadius: Radius.lg,
+    borderTopRightRadius: Radius.lg,
     padding: Spacing.lg,
     paddingBottom: Spacing.xxl,
   },
@@ -81,7 +84,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: FontSize.lg,
-    fontWeight: '700',
+    fontWeight: '900',
     color: Colors.text,
     marginBottom: Spacing.md,
   },
@@ -89,21 +92,28 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: Spacing.md,
-    borderRadius: Radius.md,
+    borderRadius: Radius.sm,
     marginBottom: Spacing.xs,
+    borderWidth: 1,
+    borderColor: 'transparent',
   },
-  selected: { backgroundColor: Colors.primaryBg },
+  selected: {
+    backgroundColor: Colors.primaryBg,
+    borderColor: Colors.primaryBorder,
+  },
   optionContent: { flex: 1 },
-  optionLabel: { fontSize: FontSize.md, fontWeight: '600', color: Colors.text },
-  selectedLabel: { color: Colors.primary },
+  optionLabel: { fontSize: FontSize.md, fontWeight: '800', color: Colors.text },
+  selectedLabel: { color: Colors.primaryDark },
   optionDesc: { fontSize: FontSize.sm, color: Colors.textSecondary, marginTop: 2 },
-  check: { fontSize: 18, color: Colors.primary, fontWeight: '700' },
+  checkDot: { width: 10, height: 10, borderRadius: Radius.full, backgroundColor: Colors.primary },
   cancelBtn: {
     marginTop: Spacing.sm,
     padding: Spacing.md,
     alignItems: 'center',
-    borderRadius: Radius.md,
-    backgroundColor: Colors.borderLight,
+    borderRadius: Radius.sm,
+    backgroundColor: Colors.surfaceSecondary,
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
-  cancelText: { fontSize: FontSize.md, fontWeight: '700', color: Colors.textSecondary },
+  cancelText: { fontSize: FontSize.md, fontWeight: '900', color: Colors.textSecondary },
 });

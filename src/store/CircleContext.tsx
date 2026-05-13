@@ -7,7 +7,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { Circle, CircleStatus, Cycle, Member, Payment, PaymentStatus } from '../types';
+import { Circle, CircleStatus, Cycle, Payment } from '../types';
 import { loadCircles, saveCircles } from './storage';
 
 function uid(): string {
@@ -155,7 +155,7 @@ export function CircleProvider({ children }: { children: React.ReactNode }) {
       isOrderLocked: draft.isOrderLocked ?? false,
       cycles: draft.cycles ?? [],
       createdAt: new Date().toISOString(),
-      status: 'planning',
+      status: draft.status ?? 'planning',
       builderMode: draft.builderMode ?? 'A',
     };
     await addCircle(circle);

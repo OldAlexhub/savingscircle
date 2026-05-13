@@ -1,3 +1,4 @@
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
@@ -5,19 +6,19 @@ import {
   StatusBar,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Badge from '../../components/common/Badge';
 import Button from '../../components/common/Button';
 import Card from '../../components/common/Card';
+import ScreenHeader from '../../components/common/ScreenHeader';
 import { useCircles } from '../../store/CircleContext';
 import { Colors, FontSize, Radius, Spacing } from '../../theme';
 import { Member } from '../../types';
 import { generateSchedule } from '../../utils/calculations';
 import { formatDate } from '../../utils/dateUtils';
 import { formatCurrency, formatFrequency } from '../../utils/formatters';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 type Props = { navigation: NativeStackNavigationProp<any> };
 
@@ -39,8 +40,15 @@ export default function SchedulePreviewScreen({ navigation }: Props) {
       payoutAmount: draft.payoutAmount ?? 0,
       numberOfMembers: draft.numberOfMembers ?? 0,
     });
-  }, [draft.startDate, draft.frequency, draft.members, draft.payoutOrder,
-      draft.contributionAmount, draft.payoutAmount, draft.numberOfMembers]);
+  }, [
+    draft.startDate,
+    draft.frequency,
+    draft.members,
+    draft.payoutOrder,
+    draft.contributionAmount,
+    draft.payoutAmount,
+    draft.numberOfMembers,
+  ]);
 
   function getMember(id: string): Member | undefined {
     return draft.members?.find(m => m.id === id);
@@ -56,49 +64,63 @@ export default function SchedulePreviewScreen({ navigation }: Props) {
   useEffect(() => {
     if (!pendingSave) { return; }
     let cancelled = false;
-    saveDraft().then((_id: string) => {
-      if (cancelled) { return; }
-      setSaving(false);
-      setPendingSave(null);
-      navigation.popToTop();
-    }).catch(() => {
-      if (cancelled) { return; }
-      setSaving(false);
-      setPendingSave(null);
-      Alert.alert('Error', 'Could not save the circle. Please try again.');
-    });
+    saveDraft()
+      .then(() => {
+        if (cancelled) { return; }
+        setSaving(false);
+        setPendingSave(null);
+        navigation.popToTop();
+      })
+      .catch(() => {
+        if (cancelled) { return; }
+        setSaving(false);
+        setPendingSave(null);
+        Alert.alert('Error', 'Could not save the circle. Please try again.');
+      });
     return () => { cancelled = true; };
-  }, [pendingSave]);
+  }, [pendingSave, saveDraft, navigation]);
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
-      <StatusBar backgroundColor={Colors.primary} barStyle="light-content" />
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Text style={styles.backIcon}>←</Text>
-        </TouchableOpacity>
-        <View>
-          <Text style={styles.headerTitle}>Schedule Preview</Text>
-          <Text style={styles.headerSub}>{draft.name} · {draft.currency}</Text>
-        </View>
-      </View>
+      <StatusBar backgroundColor={Colors.primaryDark} barStyle="light-content" />
+      <ScreenHeader
+        title="Schedule Preview"
+        subtitle={`${draft.name ?? 'Untitled circle'} / ${draft.currency ?? 'USD'}`}
+        onBack={() => navigation.goBack()}
+      />
 
       <FlatList
         data={cycles}
-        keyExtractor={c => c.id}
+        keyExtractor={cycle => cycle.id}
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={
           <View>
-            <Card variant="filled" style={styles.summaryCard}>
-              <View style={styles.summaryRow}>
+            <View style={styles.stepBand}>
+              <Step label="Mode" done />
+              <Step label="Details" done />
+              <Step label="Members" done />
+              <Step label="Order" done />
+              <Step label="Preview" active />
+            </View>
+
+            <Card variant="elevated" style={styles.summaryCard}>
+              <View style={styles.summaryTop}>
+                <View>
+                  <Text style={styles.summaryTitle}>Ready to save</Text>
+                  <Text style={styles.summarySub}>Review the generated cycle dates and payout order.</Text>
+                </View>
+                <Badge label={`${cycles.length} cycles`} color={Colors.primary} bg={Colors.primaryBg} small dot />
+              </View>
+              <View style={styles.summaryGrid}>
                 <SummaryItem label="Payout" value={formatCurrency(draft.payoutAmount ?? 0, draft.currency ?? '')} />
                 <SummaryItem label="Contribution" value={formatCurrency(draft.contributionAmount ?? 0, draft.currency ?? '')} />
                 <SummaryItem label="Frequency" value={formatFrequency(draft.frequency ?? 'monthly')} />
                 <SummaryItem label="Members" value={String(draft.numberOfMembers ?? 0)} />
               </View>
             </Card>
-            <Text style={styles.sectionLabel}>FULL SCHEDULE ({cycles.length} cycles)</Text>
+
+            <Text style={styles.sectionLabel}>Generated schedule</Text>
           </View>
         }
         renderItem={({ item: cycle }) => {
@@ -111,8 +133,8 @@ export default function SchedulePreviewScreen({ navigation }: Props) {
                 </View>
                 <View style={styles.cycleInfo}>
                   <Text style={styles.cycleDate}>{formatDate(cycle.dueDate)}</Text>
-                  <Text style={styles.cycleReceiver}>
-                    {'Receiver: '}<Text style={styles.receiverName}>{receiver?.name ?? '—'}</Text>
+                  <Text style={styles.cycleReceiver} numberOfLines={1}>
+                    Receiver: <Text style={styles.receiverName}>{receiver?.name ?? 'Unassigned'}</Text>
                   </Text>
                 </View>
                 <View style={styles.cycleAmount}>
@@ -122,7 +144,7 @@ export default function SchedulePreviewScreen({ navigation }: Props) {
               </View>
               <View style={styles.cycleBottom}>
                 <Text style={styles.cycleMeta}>
-                  {cycle.payments.length} members × {formatCurrency(cycle.contributionPerMember, draft.currency ?? '')}
+                  {cycle.payments.length} members x {formatCurrency(cycle.contributionPerMember, draft.currency ?? '')}
                 </Text>
               </View>
             </Card>
@@ -130,11 +152,16 @@ export default function SchedulePreviewScreen({ navigation }: Props) {
         }}
         ListFooterComponent={
           <View style={styles.footer}>
-            <Button label={saving ? 'Saving…' : '▶ Activate Circle Now'} onPress={() => handleSave(true)} loading={saving} style={{ marginBottom: Spacing.sm }} />
+            <Button
+              label={saving ? 'Saving...' : 'Activate Circle Now'}
+              onPress={() => handleSave(true)}
+              loading={saving}
+              style={styles.primarySave}
+            />
             <Button label="Save as Draft" onPress={() => handleSave(false)} variant="outline" disabled={saving} />
-            <View style={styles.disclaimer}>
-              <Text style={styles.disclaimerText}>
-                This schedule is for planning only. Savings Circle does not process payments or guarantee payouts.
+            <View style={styles.notice}>
+              <Text style={styles.noticeText}>
+                Savings Circle creates the schedule only. It does not collect contributions or guarantee payouts.
               </Text>
             </View>
           </View>
@@ -144,64 +171,78 @@ export default function SchedulePreviewScreen({ navigation }: Props) {
   );
 }
 
-function SummaryItem({ label, value }: { label: string; value: string }) {
+function Step({ label, active, done }: { label: string; active?: boolean; done?: boolean }) {
   return (
-    <View style={siStyles.item}>
-      <Text style={siStyles.label}>{label}</Text>
-      <Text style={siStyles.value}>{value}</Text>
+    <View style={[styles.step, done && styles.stepDone, active && styles.stepActive]}>
+      <Text style={[styles.stepText, active && styles.stepTextActive, done && styles.stepTextDone]}>{label}</Text>
     </View>
   );
 }
 
-const siStyles = StyleSheet.create({
-  item: { flex: 1, minWidth: '40%' },
-  label: { fontSize: FontSize.xs, color: Colors.textSecondary, fontWeight: '600' },
-  value: { fontSize: FontSize.md, fontWeight: '700', color: Colors.primary, marginTop: 2 },
-});
+function SummaryItem({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.summaryItem}>
+      <Text style={styles.summaryLabel}>{label}</Text>
+      <Text style={styles.summaryValue} numberOfLines={2}>{value}</Text>
+    </View>
+  );
+}
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.primary },
-  header: {
-    backgroundColor: Colors.primary,
-    paddingHorizontal: Spacing.md,
-    paddingTop: Spacing.sm,
-    paddingBottom: Spacing.xl,
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: Spacing.sm,
-  },
-  backBtn: { padding: Spacing.xs, marginTop: 2 },
-  backIcon: { fontSize: 22, color: '#fff', fontWeight: '700' },
-  headerTitle: { fontSize: FontSize.xl, fontWeight: '800', color: '#fff' },
-  headerSub: { fontSize: FontSize.sm, color: 'rgba(255,255,255,0.75)', marginTop: 2 },
+  safe: { flex: 1, backgroundColor: Colors.primaryDark },
   list: { padding: Spacing.md, paddingBottom: Spacing.xxl, backgroundColor: Colors.background, flexGrow: 1 },
-  summaryCard: { marginBottom: Spacing.md },
-  summaryRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.md },
-  sectionLabel: {
-    fontSize: FontSize.xs,
-    fontWeight: '700',
-    color: Colors.textSecondary,
-    letterSpacing: 0.8,
-    marginBottom: Spacing.sm,
+  stepBand: { flexDirection: 'row', gap: Spacing.xs, marginBottom: Spacing.lg },
+  step: {
+    flex: 1,
+    minHeight: 30,
+    borderRadius: Radius.sm,
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: Spacing.xs,
   },
+  stepDone: { backgroundColor: Colors.primaryBg, borderColor: Colors.primaryBorder },
+  stepActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
+  stepText: { fontSize: FontSize.xxs, fontWeight: '800', color: Colors.textSecondary },
+  stepTextActive: { color: Colors.textOnPrimary },
+  stepTextDone: { color: Colors.primaryDark },
+  summaryCard: { marginBottom: Spacing.md },
+  summaryTop: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: Spacing.md, marginBottom: Spacing.md },
+  summaryTitle: { fontSize: FontSize.lg, fontWeight: '900', color: Colors.text },
+  summarySub: { fontSize: FontSize.sm, color: Colors.textSecondary, marginTop: 2, lineHeight: 19 },
+  summaryGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
+  summaryItem: {
+    flexGrow: 1,
+    flexBasis: '46%',
+    backgroundColor: Colors.surfaceSecondary,
+    borderRadius: 8,
+    padding: Spacing.sm,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+  },
+  summaryLabel: { fontSize: FontSize.xs, color: Colors.textSecondary, fontWeight: '800' },
+  summaryValue: { fontSize: FontSize.md, fontWeight: '900', color: Colors.primaryDark, marginTop: 3 },
+  sectionLabel: { fontSize: FontSize.xs, fontWeight: '900', color: Colors.textSecondary, marginBottom: Spacing.sm },
   cycleCard: { marginBottom: Spacing.sm },
   cycleTop: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
   cycleNum: {
-    width: 36,
-    height: 36,
-    borderRadius: Radius.full,
+    width: 34,
+    height: 34,
+    borderRadius: Radius.sm,
     backgroundColor: Colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  cycleNumText: { fontSize: FontSize.sm, fontWeight: '800', color: '#fff' },
+  cycleNumText: { fontSize: FontSize.sm, fontWeight: '900', color: Colors.textOnPrimary },
   cycleInfo: { flex: 1 },
-  cycleDate: { fontSize: FontSize.md, fontWeight: '700', color: Colors.text },
+  cycleDate: { fontSize: FontSize.md, fontWeight: '900', color: Colors.text },
   cycleReceiver: { fontSize: FontSize.sm, color: Colors.textSecondary, marginTop: 2 },
-  receiverName: { color: Colors.primary, fontWeight: '700' },
-  cycleAmount: { alignItems: 'flex-end' },
-  cycleAmtLabel: { fontSize: FontSize.xs, color: Colors.textSecondary },
-  cycleAmt: { fontSize: FontSize.md, fontWeight: '800', color: Colors.primary },
+  receiverName: { color: Colors.primaryDark, fontWeight: '900' },
+  cycleAmount: { alignItems: 'flex-end', maxWidth: '35%' },
+  cycleAmtLabel: { fontSize: FontSize.xs, color: Colors.textSecondary, fontWeight: '700' },
+  cycleAmt: { fontSize: FontSize.sm, fontWeight: '900', color: Colors.primaryDark, textAlign: 'right' },
   cycleBottom: {
     marginTop: Spacing.sm,
     paddingTop: Spacing.sm,
@@ -210,11 +251,14 @@ const styles = StyleSheet.create({
   },
   cycleMeta: { fontSize: FontSize.sm, color: Colors.textSecondary },
   footer: { marginTop: Spacing.md },
-  disclaimer: {
+  primarySave: { marginBottom: Spacing.sm },
+  notice: {
     backgroundColor: Colors.accentBg,
-    borderRadius: Radius.md,
+    borderRadius: 8,
     padding: Spacing.md,
     marginTop: Spacing.md,
+    borderWidth: 1,
+    borderColor: Colors.accentBorder,
   },
-  disclaimerText: { fontSize: FontSize.sm, color: Colors.accentDark, lineHeight: 20 },
+  noticeText: { fontSize: FontSize.sm, color: Colors.accentDark, lineHeight: 20 },
 });

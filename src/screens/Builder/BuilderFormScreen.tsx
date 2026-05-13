@@ -1,4 +1,5 @@
 import DateTimePicker from '@react-native-community/datetimepicker';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import React, { useState } from 'react';
 import {
   Alert,
@@ -15,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Button from '../../components/common/Button';
 import Card from '../../components/common/Card';
 import Input, { PickerInput } from '../../components/common/Input';
+import ScreenHeader from '../../components/common/ScreenHeader';
 import SelectSheet from '../../components/common/SelectSheet';
 import { useCircles } from '../../store/CircleContext';
 import { Colors, FontSize, Radius, Spacing } from '../../theme';
@@ -22,21 +24,20 @@ import { Frequency } from '../../types';
 import { calculateMode } from '../../utils/calculations';
 import { toIsoDate } from '../../utils/dateUtils';
 import { formatCurrency, formatFrequency } from '../../utils/formatters';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 type Props = { navigation: NativeStackNavigationProp<any> };
 
 const CURRENCIES = [
-  { label: 'USD – US Dollar', value: 'USD' },
-  { label: 'EGP – Egyptian Pound', value: 'EGP' },
-  { label: 'SAR – Saudi Riyal', value: 'SAR' },
-  { label: 'AED – UAE Dirham', value: 'AED' },
-  { label: 'EUR – Euro', value: 'EUR' },
-  { label: 'GBP – British Pound', value: 'GBP' },
-  { label: 'NGN – Nigerian Naira', value: 'NGN' },
-  { label: 'KES – Kenyan Shilling', value: 'KES' },
-  { label: 'ETB – Ethiopian Birr', value: 'ETB' },
-  { label: 'GHS – Ghanaian Cedi', value: 'GHS' },
+  { label: 'USD - US Dollar', value: 'USD' },
+  { label: 'EGP - Egyptian Pound', value: 'EGP' },
+  { label: 'SAR - Saudi Riyal', value: 'SAR' },
+  { label: 'AED - UAE Dirham', value: 'AED' },
+  { label: 'EUR - Euro', value: 'EUR' },
+  { label: 'GBP - British Pound', value: 'GBP' },
+  { label: 'NGN - Nigerian Naira', value: 'NGN' },
+  { label: 'KES - Kenyan Shilling', value: 'KES' },
+  { label: 'ETB - Ethiopian Birr', value: 'ETB' },
+  { label: 'GHS - Ghanaian Cedi', value: 'GHS' },
   { label: 'Other', value: 'OTHER' },
 ];
 
@@ -65,6 +66,12 @@ export default function BuilderFormScreen({ navigation }: Props) {
   const [result, setResult] = useState<ReturnType<typeof calculateMode> | null>(null);
 
   const effectiveCurrency = currency === 'OTHER' ? (customCurrency || 'XXX') : currency;
+  const modeLabel =
+    mode === 'A'
+      ? 'Payout and duration'
+      : mode === 'B'
+        ? 'Payout and contribution'
+        : 'Fixed group size';
 
   function validate(): string | null {
     if (!name.trim()) { return 'Enter a circle name.'; }
@@ -88,7 +95,10 @@ export default function BuilderFormScreen({ navigation }: Props) {
 
   function calculate() {
     const err = validate();
-    if (err) { Alert.alert('Missing Info', err); return; }
+    if (err) {
+      Alert.alert('Missing Info', err);
+      return;
+    }
     const p = parseFloat(payout);
     const calc = calculateMode(mode, {
       payoutAmount: p,
@@ -114,28 +124,32 @@ export default function BuilderFormScreen({ navigation }: Props) {
     navigation.navigate('Members');
   }
 
-  const modeLabel = mode === 'A' ? 'Mode A: Payout & Duration' : mode === 'B' ? 'Mode B: Payout & Contribution' : 'Mode C: Fixed Group Size';
-
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
-      <StatusBar backgroundColor={Colors.primary} barStyle="light-content" />
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Text style={styles.backIcon}>←</Text>
-        </TouchableOpacity>
-        <View>
-          <Text style={styles.headerTitle}>Circle Details</Text>
-          <Text style={styles.headerSub}>{modeLabel}</Text>
-        </View>
-      </View>
+      <StatusBar backgroundColor={Colors.primaryDark} barStyle="light-content" />
+      <ScreenHeader
+        title="Circle Details"
+        subtitle={`Mode ${mode}: ${modeLabel}`}
+        onBack={() => navigation.goBack()}
+      />
 
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView style={styles.scroll} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}>
+          <View style={styles.stepBand}>
+            <Step label="Mode" done />
+            <Step label="Details" active />
+            <Step label="Members" />
+            <Step label="Order" />
+            <Step label="Preview" />
+          </View>
 
-          {/* Common fields */}
-          <Text style={styles.section}>CIRCLE INFO</Text>
+          <SectionTitle title="Circle info" />
           <Card>
-            <Input label="Circle Name" value={name} onChangeText={setName} placeholder="e.g. Family Group 2025" required />
+            <Input label="Circle Name" value={name} onChangeText={setName} placeholder="Family Group 2026" required />
             <PickerInput
               label="Currency"
               value={currency === 'OTHER' ? 'Other (custom)' : (CURRENCIES.find(c => c.value === currency)?.label ?? currency)}
@@ -143,27 +157,33 @@ export default function BuilderFormScreen({ navigation }: Props) {
               required
             />
             {currency === 'OTHER' && (
-              <Input label="Custom Currency Code" value={customCurrency} onChangeText={setCustomCurrency} placeholder="e.g. TZS" maxLength={6} />
+              <Input
+                label="Custom Currency Code"
+                value={customCurrency}
+                onChangeText={setCustomCurrency}
+                placeholder="TZS"
+                autoCapitalize="characters"
+                maxLength={6}
+              />
             )}
           </Card>
 
-          {/* Mode-specific inputs */}
-          <Text style={styles.section}>PLANNING INPUTS</Text>
+          <SectionTitle title="Planning inputs" />
           <Card>
             <Input
               label="Target Payout Amount"
               value={payout}
               onChangeText={setPayout}
-              placeholder="e.g. 1000"
+              placeholder="1000"
               keyboardType="decimal-pad"
-              hint="The total amount each member receives when it's their turn."
+              hint="The amount each member receives on their turn."
               required
             />
             <PickerInput
               label="Payment Frequency"
               value={formatFrequency(freq)}
               onPress={() => setShowFreqSheet(true)}
-              hint="How often members contribute."
+              hint="How often the group collects contributions."
               required
             />
             {mode === 'A' && (
@@ -171,9 +191,9 @@ export default function BuilderFormScreen({ navigation }: Props) {
                 label="Number of Payment Rounds"
                 value={duration}
                 onChangeText={setDuration}
-                placeholder="e.g. 12"
+                placeholder="12"
                 keyboardType="number-pad"
-                hint="Equal to the number of members. Each round, one member collects."
+                hint="Usually the same as the number of members."
                 required
               />
             )}
@@ -182,9 +202,9 @@ export default function BuilderFormScreen({ navigation }: Props) {
                 label="Max Contribution Per Person"
                 value={contribution}
                 onChangeText={setContribution}
-                placeholder="e.g. 100"
+                placeholder="100"
                 keyboardType="decimal-pad"
-                hint="The most each person can afford to pay per cycle."
+                hint="The most each member can pay per cycle."
                 required
               />
             )}
@@ -193,18 +213,17 @@ export default function BuilderFormScreen({ navigation }: Props) {
                 label="Number of Members"
                 value={members}
                 onChangeText={setMembers}
-                placeholder="e.g. 10"
+                placeholder="10"
                 keyboardType="number-pad"
-                hint="Everyone gets one payout turn."
+                hint="Every member gets one payout turn."
                 required
               />
             )}
           </Card>
 
-          {/* Start date */}
-          <Text style={styles.section}>SCHEDULE</Text>
+          <SectionTitle title="Schedule" />
           <Card>
-            <Text style={styles.fieldLabel}>Start Date <Text style={{ color: Colors.error }}>*</Text></Text>
+            <Text style={styles.fieldLabel}>Start Date <Text style={styles.required}>*</Text></Text>
             <TouchableOpacity
               style={styles.dateTrigger}
               onPress={() => setShowDatePicker(true)}
@@ -212,7 +231,7 @@ export default function BuilderFormScreen({ navigation }: Props) {
               <Text style={styles.dateValue}>
                 {startDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
               </Text>
-              <Text style={styles.dateIcon}>📅</Text>
+              <Text style={styles.dateChange}>Change</Text>
             </TouchableOpacity>
           </Card>
 
@@ -229,34 +248,35 @@ export default function BuilderFormScreen({ navigation }: Props) {
             />
           )}
 
-          {/* Calculate */}
-          <Button label="Calculate" onPress={calculate} style={styles.calcBtn} />
+          <Button label="Calculate circle" onPress={calculate} style={styles.calcBtn} />
 
-          {/* Result */}
           {result && (
             <>
-              <Text style={styles.section}>RESULT</Text>
+              <SectionTitle title="Result" />
               <Card variant="elevated" style={styles.resultCard}>
-                <Text style={styles.resultTitle}>📊 Circle Preview</Text>
+                <View style={styles.resultHeader}>
+                  <View>
+                    <Text style={styles.resultTitle}>Circle preview</Text>
+                    <Text style={styles.resultSub}>Review the numbers before adding members.</Text>
+                  </View>
+                </View>
                 {result.wasRounded && (
                   <View style={styles.roundNote}>
-                    <Text style={styles.roundNoteText}>⚠️ {result.roundingNote}</Text>
+                    <Text style={styles.roundNoteText}>{result.roundingNote}</Text>
                   </View>
                 )}
                 <View style={styles.resultGrid}>
-                  <ResultItem label="Members Needed" value={result.numberOfMembers.toString()} />
-                  <ResultItem label="Contribution / Person" value={formatCurrency(result.contributionAmount, effectiveCurrency)} highlight />
-                  <ResultItem label="Payout Per Turn" value={formatCurrency(result.totalPayout, effectiveCurrency)} highlight />
-                  <ResultItem label="Total Duration" value={result.durationLabel} />
-                  <ResultItem label="Total Cycles" value={result.totalCycles.toString()} />
+                  <ResultItem label="Members" value={result.numberOfMembers.toString()} />
+                  <ResultItem label="Contribution" value={formatCurrency(result.contributionAmount, effectiveCurrency)} highlight />
+                  <ResultItem label="Payout" value={formatCurrency(result.totalPayout, effectiveCurrency)} highlight />
+                  <ResultItem label="Duration" value={result.durationLabel} />
+                  <ResultItem label="Cycles" value={result.totalCycles.toString()} />
                   <ResultItem label="Frequency" value={formatFrequency(freq)} />
                 </View>
-                <Button label="Next: Add Members →" onPress={proceed} style={{ marginTop: Spacing.lg }} />
+                <Button label="Next: Add Members" onPress={proceed} style={styles.nextBtn} />
               </Card>
             </>
           )}
-
-          <View style={{ height: Spacing.xxl }} />
         </ScrollView>
       </KeyboardAvoidingView>
 
@@ -280,74 +300,102 @@ export default function BuilderFormScreen({ navigation }: Props) {
   );
 }
 
+function SectionTitle({ title }: { title: string }) {
+  return <Text style={styles.section}>{title}</Text>;
+}
+
+function Step({ label, active, done }: { label: string; active?: boolean; done?: boolean }) {
+  return (
+    <View style={[styles.step, done && styles.stepDone, active && styles.stepActive]}>
+      <Text style={[styles.stepText, (active || done) && styles.stepTextActive]}>{label}</Text>
+    </View>
+  );
+}
+
 function ResultItem({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
   return (
     <View style={itemStyles.wrap}>
       <Text style={itemStyles.label}>{label}</Text>
-      <Text style={[itemStyles.value, highlight && itemStyles.highlighted]}>{value}</Text>
+      <Text style={[itemStyles.value, highlight && itemStyles.highlighted]} numberOfLines={2}>{value}</Text>
     </View>
   );
 }
 
 const itemStyles = StyleSheet.create({
-  wrap: { marginBottom: Spacing.sm },
-  label: { fontSize: FontSize.xs, color: Colors.textSecondary, fontWeight: '600', letterSpacing: 0.3 },
-  value: { fontSize: FontSize.lg, fontWeight: '700', color: Colors.text, marginTop: 2 },
-  highlighted: { color: Colors.primary, fontSize: FontSize.xl },
+  wrap: {
+    width: '50%',
+    paddingRight: Spacing.md,
+    marginBottom: Spacing.md,
+  },
+  label: { fontSize: FontSize.xs, color: Colors.textSecondary, fontWeight: '800' },
+  value: { fontSize: FontSize.md, fontWeight: '900', color: Colors.text, marginTop: 3 },
+  highlighted: { color: Colors.primaryDark },
 });
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.primary },
-  header: {
-    backgroundColor: Colors.primary,
-    paddingHorizontal: Spacing.md,
-    paddingTop: Spacing.sm,
-    paddingBottom: Spacing.xl,
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: Spacing.sm,
-  },
-  backBtn: { padding: Spacing.xs, marginTop: 2 },
-  backIcon: { fontSize: 22, color: '#fff', fontWeight: '700' },
-  headerTitle: { fontSize: FontSize.xl, fontWeight: '800', color: '#fff' },
-  headerSub: { fontSize: FontSize.sm, color: 'rgba(255,255,255,0.75)', marginTop: 2 },
+  safe: { flex: 1, backgroundColor: Colors.primaryDark },
+  flex: { flex: 1 },
   scroll: { flex: 1, backgroundColor: Colors.background },
-  content: { padding: Spacing.md },
+  content: { padding: Spacing.md, paddingBottom: Spacing.xxl },
+  stepBand: { flexDirection: 'row', gap: Spacing.xs, marginBottom: Spacing.lg },
+  step: {
+    flex: 1,
+    minHeight: 30,
+    borderRadius: Radius.sm,
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: Spacing.xs,
+  },
+  stepDone: { backgroundColor: Colors.primaryBg, borderColor: Colors.primaryBorder },
+  stepActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
+  stepText: { fontSize: FontSize.xxs, fontWeight: '800', color: Colors.textSecondary },
+  stepTextActive: { color: Colors.textOnPrimary },
   section: {
     fontSize: FontSize.xs,
-    fontWeight: '700',
+    fontWeight: '900',
     color: Colors.textSecondary,
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
     marginBottom: Spacing.sm,
-    marginTop: Spacing.lg,
+    marginTop: Spacing.md,
   },
   fieldLabel: {
     fontSize: FontSize.sm,
-    fontWeight: '600',
+    fontWeight: '800',
     color: Colors.textSecondary,
     marginBottom: Spacing.xs,
   },
+  required: { color: Colors.error },
   dateTrigger: {
+    minHeight: 48,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: Colors.borderLight,
-    borderRadius: Radius.md,
+    backgroundColor: Colors.surfaceSecondary,
+    borderRadius: Radius.sm,
+    borderWidth: 1,
+    borderColor: Colors.border,
     paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm + 4,
+    paddingVertical: Spacing.sm,
+    gap: Spacing.md,
   },
-  dateValue: { fontSize: FontSize.md, color: Colors.text, fontWeight: '500' },
-  dateIcon: { fontSize: 20 },
+  dateValue: { flex: 1, fontSize: FontSize.md, color: Colors.text, fontWeight: '700' },
+  dateChange: { fontSize: FontSize.sm, color: Colors.primary, fontWeight: '900' },
   calcBtn: { marginTop: Spacing.lg },
   resultCard: { marginBottom: Spacing.lg },
-  resultTitle: { fontSize: FontSize.lg, fontWeight: '700', color: Colors.text, marginBottom: Spacing.md },
+  resultHeader: { marginBottom: Spacing.md },
+  resultTitle: { fontSize: FontSize.lg, fontWeight: '900', color: Colors.text },
+  resultSub: { fontSize: FontSize.sm, color: Colors.textSecondary, marginTop: 2 },
   roundNote: {
     backgroundColor: Colors.warningBg,
-    borderRadius: Radius.md,
+    borderRadius: 8,
     padding: Spacing.sm,
     marginBottom: Spacing.md,
+    borderWidth: 1,
+    borderColor: Colors.accentBorder,
   },
   roundNoteText: { fontSize: FontSize.sm, color: Colors.warning, lineHeight: 20 },
-  resultGrid: {},
+  resultGrid: { flexDirection: 'row', flexWrap: 'wrap' },
+  nextBtn: { marginTop: Spacing.sm },
 });

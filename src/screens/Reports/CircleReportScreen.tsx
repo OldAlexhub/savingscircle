@@ -6,7 +6,6 @@ import {
   StatusBar,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -14,12 +13,21 @@ import Badge from '../../components/common/Badge';
 import Button from '../../components/common/Button';
 import Card from '../../components/common/Card';
 import ProgressBar from '../../components/common/ProgressBar';
+import ScreenHeader from '../../components/common/ScreenHeader';
 import { useCircles } from '../../store/CircleContext';
 import { Colors, FontSize, Radius, Spacing } from '../../theme';
 import { Circle, Cycle, Member } from '../../types';
-import { getCycleStats, getCircleStats } from '../../utils/calculations';
+import { getCircleStats, getCycleStats } from '../../utils/calculations';
 import { formatDate } from '../../utils/dateUtils';
-import { circleStatusColor, formatCurrency, formatFrequency, formatStatus, statusColor } from '../../utils/formatters';
+import {
+  circleStatusColor,
+  formatCircleStatus,
+  formatCurrency,
+  formatFrequency,
+  formatStatus,
+  statusColor,
+} from '../../utils/formatters';
+
 type Props = {
   navigation: any;
   route: any;
@@ -29,55 +37,59 @@ export default function CircleReportScreen({ navigation, route }: Props) {
   const { circleId } = route.params;
   const { getCircle } = useCircles();
   const circle = getCircle(circleId) as Circle | undefined;
-
   const stats = useMemo(() => circle ? getCircleStats(circle) : null, [circle]);
 
   if (!circle || !stats) {
     return (
       <SafeAreaView style={styles.safe} edges={['top']}>
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <Text style={{ fontSize: FontSize.lg, color: Colors.textSecondary }}>Circle not found.</Text>
+        <StatusBar backgroundColor={Colors.primaryDark} barStyle="light-content" />
+        <ScreenHeader title="Report" subtitle="Not found" onBack={() => navigation.goBack()} />
+        <View style={styles.notFound}>
+          <Text style={styles.notFoundText}>Circle not found.</Text>
         </View>
       </SafeAreaView>
     );
   }
 
+  const reportCircle = circle;
+  const reportStats = stats;
+
   function getMember(id: string): Member | undefined {
-    return circle!.members.find(m => m.id === id);
+    return reportCircle.members.find(m => m.id === id);
   }
 
   async function shareReport() {
     const lines: string[] = [
-      `===== ${circle!.name} =====`,
-      `Savings Circle — Planning Report`,
+      `===== ${reportCircle.name} =====`,
+      'Savings Circle Planning Report',
       '',
-      `Status: ${circle!.status}`,
-      `Payout per turn: ${formatCurrency(circle!.payoutAmount, circle!.currency)}`,
-      `Contribution/person: ${formatCurrency(circle!.contributionAmount, circle!.currency)}`,
-      `Frequency: ${formatFrequency(circle!.frequency)}`,
-      `Members: ${circle!.numberOfMembers}`,
-      `Start date: ${formatDate(circle!.startDate)}`,
-      `Progress: ${stats!.completedCycles}/${stats!.totalCycles} cycles`,
+      `Status: ${formatCircleStatus(reportCircle.status)}`,
+      `Payout per turn: ${formatCurrency(reportCircle.payoutAmount, reportCircle.currency)}`,
+      `Contribution per person: ${formatCurrency(reportCircle.contributionAmount, reportCircle.currency)}`,
+      `Frequency: ${formatFrequency(reportCircle.frequency)}`,
+      `Members: ${reportCircle.numberOfMembers}`,
+      `Start date: ${formatDate(reportCircle.startDate)}`,
+      `Progress: ${reportStats.completedCycles}/${reportStats.totalCycles} cycles`,
       '',
-      '— PAYOUT SCHEDULE —',
-      ...circle!.cycles.map(cy => {
-        const cs = getCycleStats(cy);
-        const rec = getMember(cy.receivingMemberId);
-        return `Cycle ${cy.cycleNumber} | ${formatDate(cy.dueDate)} | ${rec?.name ?? '—'} | ${formatCurrency(cy.totalPayout, circle!.currency)} | Paid: ${formatCurrency(cs.totalPaid, circle!.currency)}`;
+      'PAYOUT SCHEDULE',
+      ...reportCircle.cycles.map(cycle => {
+        const cycleStats = getCycleStats(cycle);
+        const receiver = getMember(cycle.receivingMemberId);
+        return `Cycle ${cycle.cycleNumber} | ${formatDate(cycle.dueDate)} | ${receiver?.name ?? 'Unassigned'} | ${formatCurrency(cycle.totalPayout, reportCircle.currency)} | Paid: ${formatCurrency(cycleStats.totalPaid, reportCircle.currency)}`;
       }),
       '',
-      '— MEMBER SUMMARY —',
-      ...circle!.members.map(m => {
+      'MEMBER SUMMARY',
+      ...reportCircle.members.map(member => {
         let paidCycles = 0;
-        circle!.cycles.forEach(cy => {
-          const p = cy.payments.find(p => p.memberId === m.id);
-          if (p?.status === 'paid') { paidCycles++; }
+        reportCircle.cycles.forEach(cycle => {
+          const payment = cycle.payments.find(p => p.memberId === member.id);
+          if (payment?.status === 'paid') { paidCycles++; }
         });
-        return `${m.name}${m.isOrganizer ? ' (Organizer)' : ''}: ${paidCycles}/${circle!.cycles.length} cycles paid`;
+        return `${member.name}${member.isOrganizer ? ' (Organizer)' : ''}: ${paidCycles}/${reportCircle.cycles.length} cycles paid`;
       }),
       '',
-      'Generated by Savings Circle — Planning & bookkeeping tool only.',
-      'This app does not process payments or manage real money.',
+      'Generated by Savings Circle.',
+      'Planning and bookkeeping tool only. Does not process payments or manage money.',
     ];
     try {
       await Share.share({ message: lines.join('\n') });
@@ -86,150 +98,74 @@ export default function CircleReportScreen({ navigation, route }: Props) {
     }
   }
 
-  const sc = circleStatusColor(circle.status);
+  const sc = circleStatusColor(reportCircle.status);
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
-      <StatusBar backgroundColor={Colors.primary} barStyle="light-content" />
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Text style={styles.backIcon}>←</Text>
-        </TouchableOpacity>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.headerTitle} numberOfLines={1}>{circle.name}</Text>
-          <Text style={styles.headerSub}>Circle Report</Text>
-        </View>
-        <TouchableOpacity onPress={shareReport} style={styles.shareBtn}>
-          <Text style={styles.shareIcon}>⬆️</Text>
-        </TouchableOpacity>
-      </View>
+      <StatusBar backgroundColor={Colors.primaryDark} barStyle="light-content" />
+      <ScreenHeader
+        title={reportCircle.name}
+        subtitle="Circle report"
+        onBack={() => navigation.goBack()}
+        right={<Button label="Share" onPress={shareReport} size="sm" fullWidth={false} variant="ghost" />}
+      />
 
       <ScrollView
-        style={{ flex: 1, backgroundColor: Colors.background }}
+        style={styles.scroll}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}>
-
-        {/* Summary */}
         <Card variant="elevated" style={styles.summaryCard}>
           <View style={styles.summaryTop}>
-            <View>
-              <Text style={styles.bigAmount}>{formatCurrency(circle.payoutAmount, circle.currency)}</Text>
-              <Text style={styles.bigAmtLabel}>per payout turn</Text>
+            <View style={styles.summaryTitleWrap}>
+              <Text style={styles.bigAmount}>{formatCurrency(reportCircle.payoutAmount, reportCircle.currency)}</Text>
+              <Text style={styles.bigAmtLabel}>Payout per turn</Text>
             </View>
-            <Badge label={circle.status} color={sc.text} bg={sc.bg} />
+            <Badge label={formatCircleStatus(reportCircle.status)} color={sc.text} bg={sc.bg} dot />
           </View>
 
           <View style={styles.grid}>
-            <GridItem label="Contribution" value={formatCurrency(circle.contributionAmount, circle.currency)} />
-            <GridItem label="Frequency" value={formatFrequency(circle.frequency)} />
-            <GridItem label="Members" value={String(circle.numberOfMembers)} />
-            <GridItem label="Start Date" value={formatDate(circle.startDate)} />
+            <GridItem label="Contribution" value={formatCurrency(reportCircle.contributionAmount, reportCircle.currency)} />
+            <GridItem label="Frequency" value={formatFrequency(reportCircle.frequency)} />
+            <GridItem label="Members" value={String(reportCircle.numberOfMembers)} />
+            <GridItem label="Start" value={formatDate(reportCircle.startDate)} />
           </View>
 
           <ProgressBar
-            percent={stats.progressPercent}
-            label={`${stats.completedCycles} / ${stats.totalCycles} cycles completed`}
-            color={Colors.primary}
+            percent={reportStats.progressPercent}
+            label={`${reportStats.completedCycles} of ${reportStats.totalCycles} cycles completed`}
+            color={reportCircle.status === 'completed' ? Colors.success : Colors.primary}
           />
 
           <View style={styles.totalSection}>
-            <View style={styles.totalRow}>
-              <Text style={styles.totalLabel}>Total Collected</Text>
-              <Text style={[styles.totalValue, { color: Colors.success }]}>{formatCurrency(stats.totalPaidOverall, circle.currency)}</Text>
-            </View>
-            <View style={styles.totalRow}>
-              <Text style={styles.totalLabel}>Total Expected</Text>
-              <Text style={styles.totalValue}>{formatCurrency(stats.totalExpectedOverall, circle.currency)}</Text>
-            </View>
+            <TotalLine label="Total collected" value={formatCurrency(reportStats.totalPaidOverall, reportCircle.currency)} color={Colors.success} />
+            <TotalLine label="Total expected" value={formatCurrency(reportStats.totalExpectedOverall, reportCircle.currency)} color={Colors.text} />
           </View>
         </Card>
 
-        {/* Member summary */}
-        <Text style={styles.sectionTitle}>MEMBER SUMMARY</Text>
-        {circle.members.map(member => {
-          let paidCycles = 0;
-          let totalPaid = 0;
-          circle.cycles.forEach(cy => {
-            const p = cy.payments.find(pay => pay.memberId === member.id);
-            if (p?.status === 'paid') { paidCycles++; totalPaid += cy.contributionPerMember; }
-            else if (p?.status === 'partial') { totalPaid += p.paidAmount; }
-          });
-          const completion = circle.cycles.length > 0 ? (paidCycles / circle.cycles.length) * 100 : 0;
+        <SectionTitle title="Member summary" />
+        {reportCircle.members.map(member => (
+          <MemberReport
+            key={member.id}
+            member={member}
+            cycles={reportCircle.cycles}
+            currency={reportCircle.currency}
+          />
+        ))}
 
-          return (
-            <Card key={member.id} style={styles.memberCard}>
-              <View style={styles.memberRow}>
-                <View style={styles.avatar}>
-                  <Text style={styles.avatarText}>{member.name.charAt(0).toUpperCase()}</Text>
-                </View>
-                <View style={{ flex: 1 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.xs }}>
-                    <Text style={styles.memberName}>{member.name}</Text>
-                    {member.isOrganizer && (
-                      <View style={styles.orgTag}><Text style={styles.orgTagText}>Organizer</Text></View>
-                    )}
-                  </View>
-                  <Text style={styles.memberMeta}>Paid {paidCycles}/{circle.cycles.length} cycles · {formatCurrency(totalPaid, circle.currency)} collected</Text>
-                  <ProgressBar percent={completion} showValue={false} height={4} color={Colors.primary} />
-                </View>
-              </View>
-            </Card>
-          );
-        })}
+        <SectionTitle title="Cycle breakdown" />
+        {reportCircle.cycles.map(cycle => (
+          <CycleReport
+            key={cycle.id}
+            cycle={cycle}
+            currency={reportCircle.currency}
+            getMember={getMember}
+          />
+        ))}
 
-        {/* Cycle-by-cycle */}
-        <Text style={styles.sectionTitle}>CYCLE BREAKDOWN</Text>
-        {circle.cycles.map(cycle => {
-          const cs = getCycleStats(cycle);
-          const receiver = getMember(cycle.receivingMemberId);
-          const allDone = cs.paidCount + cs.excusedCount === cycle.payments.length;
+        <Button label="Share Report" onPress={shareReport} style={styles.shareFooter} />
 
-          return (
-            <Card key={cycle.id} style={styles.cycleCard}>
-              <View style={styles.cycleHeader}>
-                <View style={styles.cycleNumBadge}>
-                  <Text style={styles.cycleNumText}>{cycle.cycleNumber}</Text>
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.cycleDate}>{formatDate(cycle.dueDate)}</Text>
-                  <Text style={styles.cycleReceiver}>
-                    {'→ '}<Text style={{ color: Colors.primary, fontWeight: '700' }}>{receiver?.name ?? '—'}</Text>
-                  </Text>
-                </View>
-                <View style={{ alignItems: 'flex-end' }}>
-                  <Text style={styles.cyclePayout}>{formatCurrency(cycle.totalPayout, circle.currency)}</Text>
-                  <Badge
-                    label={allDone ? 'Done' : `${cs.paidCount}/${cycle.payments.length}`}
-                    color={allDone ? Colors.success : Colors.warning}
-                    bg={allDone ? Colors.successBg : Colors.warningBg}
-                    small
-                  />
-                </View>
-              </View>
-
-              {/* Individual payment statuses */}
-              <View style={styles.paymentRows}>
-                {cycle.payments.map(p => {
-                  const mem = getMember(p.memberId);
-                  const sc = statusColor(p.status);
-                  return (
-                    <View key={p.memberId} style={styles.paymentMiniRow}>
-                      <Text style={styles.paymentMiniName} numberOfLines={1}>{mem?.name ?? '—'}</Text>
-                      <View style={[styles.paymentMiniStatus, { backgroundColor: sc.bg }]}>
-                        <Text style={[styles.paymentMiniStatusText, { color: sc.text }]}>{formatStatus(p.status)}</Text>
-                      </View>
-                    </View>
-                  );
-                })}
-              </View>
-            </Card>
-          );
-        })}
-
-        <Button label="⬆️ Share Report" onPress={shareReport} style={{ marginTop: Spacing.md }} />
-
-        <View style={styles.disclaimer}>
-          <Text style={styles.disclaimerText}>
+        <View style={styles.notice}>
+          <Text style={styles.noticeText}>
             Savings Circle is a planning and bookkeeping tool only. It does not process payments, hold funds, or guarantee payouts.
           </Text>
         </View>
@@ -238,85 +174,197 @@ export default function CircleReportScreen({ navigation, route }: Props) {
   );
 }
 
+function SectionTitle({ title }: { title: string }) {
+  return <Text style={styles.sectionTitle}>{title}</Text>;
+}
+
 function GridItem({ label, value }: { label: string; value: string }) {
   return (
-    <View style={giStyles.item}>
-      <Text style={giStyles.label}>{label}</Text>
-      <Text style={giStyles.value}>{value}</Text>
+    <View style={styles.gridItem}>
+      <Text style={styles.gridLabel}>{label}</Text>
+      <Text style={styles.gridValue} numberOfLines={2}>{value}</Text>
     </View>
   );
 }
 
-const giStyles = StyleSheet.create({
-  item: { flex: 1, minWidth: '45%', marginBottom: Spacing.sm },
-  label: { fontSize: FontSize.xs, color: Colors.textSecondary, fontWeight: '600' },
-  value: { fontSize: FontSize.md, fontWeight: '700', color: Colors.text, marginTop: 2 },
-});
+function TotalLine({ label, value, color }: { label: string; value: string; color: string }) {
+  return (
+    <View style={styles.totalRow}>
+      <Text style={styles.totalLabel}>{label}</Text>
+      <Text style={[styles.totalValue, { color }]}>{value}</Text>
+    </View>
+  );
+}
+
+function MemberReport({
+  member,
+  cycles,
+  currency,
+}: {
+  member: Member;
+  cycles: Cycle[];
+  currency: string;
+}) {
+  let paidCycles = 0;
+  let totalPaid = 0;
+
+  cycles.forEach(cycle => {
+    const payment = cycle.payments.find(p => p.memberId === member.id);
+    if (payment?.status === 'paid') {
+      paidCycles++;
+      totalPaid += cycle.contributionPerMember;
+    } else if (payment?.status === 'partial') {
+      totalPaid += payment.paidAmount;
+    }
+  });
+
+  const completion = cycles.length > 0 ? (paidCycles / cycles.length) * 100 : 0;
+
+  return (
+    <Card style={styles.memberCard}>
+      <View style={styles.memberRow}>
+        <View style={styles.avatar}>
+          <Text style={styles.avatarText}>{member.name.charAt(0).toUpperCase()}</Text>
+        </View>
+        <View style={styles.memberInfo}>
+          <View style={styles.memberNameRow}>
+            <Text style={styles.memberName} numberOfLines={1}>{member.name}</Text>
+            {member.isOrganizer && (
+              <Badge label="Organizer" color={Colors.accentDark} bg={Colors.accentBg} small />
+            )}
+          </View>
+          <Text style={styles.memberMeta}>
+            Paid {paidCycles}/{cycles.length} cycles / {formatCurrency(totalPaid, currency)} collected
+          </Text>
+          <ProgressBar percent={completion} showValue={false} height={5} color={Colors.primary} />
+        </View>
+      </View>
+    </Card>
+  );
+}
+
+function CycleReport({
+  cycle,
+  currency,
+  getMember,
+}: {
+  cycle: Cycle;
+  currency: string;
+  getMember: (id: string) => Member | undefined;
+}) {
+  const cycleStats = getCycleStats(cycle);
+  const receiver = getMember(cycle.receivingMemberId);
+  const allDone = cycleStats.paidCount + cycleStats.excusedCount === cycle.payments.length;
+
+  return (
+    <Card style={styles.cycleCard}>
+      <View style={styles.cycleHeader}>
+        <View style={styles.cycleNumBadge}>
+          <Text style={styles.cycleNumText}>{cycle.cycleNumber}</Text>
+        </View>
+        <View style={styles.cycleTitleWrap}>
+          <Text style={styles.cycleDate}>{formatDate(cycle.dueDate)}</Text>
+          <Text style={styles.cycleReceiver} numberOfLines={1}>
+            Receiver: <Text style={styles.receiverName}>{receiver?.name ?? 'Unassigned'}</Text>
+          </Text>
+        </View>
+        <View style={styles.cycleRight}>
+          <Text style={styles.cyclePayout}>{formatCurrency(cycle.totalPayout, currency)}</Text>
+          <Badge
+            label={allDone ? 'Done' : `${cycleStats.paidCount}/${cycle.payments.length}`}
+            color={allDone ? Colors.success : Colors.warning}
+            bg={allDone ? Colors.successBg : Colors.warningBg}
+            small
+          />
+        </View>
+      </View>
+
+      <View style={styles.paymentRows}>
+        {cycle.payments.map(payment => {
+          const member = getMember(payment.memberId);
+          const sc = statusColor(payment.status);
+          return (
+            <View key={payment.memberId} style={styles.paymentMiniRow}>
+              <Text style={styles.paymentMiniName} numberOfLines={1}>{member?.name ?? 'Unknown member'}</Text>
+              <View style={[styles.paymentMiniStatus, { backgroundColor: sc.bg, borderColor: sc.text }]}>
+                <Text style={[styles.paymentMiniStatusText, { color: sc.text }]}>{formatStatus(payment.status)}</Text>
+              </View>
+            </View>
+          );
+        })}
+      </View>
+    </Card>
+  );
+}
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.primary },
-  header: {
-    backgroundColor: Colors.primary,
-    paddingHorizontal: Spacing.md,
-    paddingTop: Spacing.sm,
-    paddingBottom: Spacing.xl,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-  },
-  backBtn: { padding: Spacing.xs },
-  backIcon: { fontSize: 22, color: '#fff', fontWeight: '700' },
-  headerTitle: { fontSize: FontSize.xl, fontWeight: '800', color: '#fff' },
-  headerSub: { fontSize: FontSize.sm, color: 'rgba(255,255,255,0.75)', marginTop: 2 },
-  shareBtn: { padding: Spacing.sm },
-  shareIcon: { fontSize: 20 },
+  safe: { flex: 1, backgroundColor: Colors.primaryDark },
+  notFound: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.background },
+  notFoundText: { fontSize: FontSize.lg, color: Colors.textSecondary, fontWeight: '800' },
+  scroll: { flex: 1, backgroundColor: Colors.background },
   content: { padding: Spacing.md, paddingBottom: Spacing.xxl },
+  summaryCard: { marginBottom: Spacing.sm },
+  summaryTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: Spacing.md, marginBottom: Spacing.md },
+  summaryTitleWrap: { flex: 1 },
+  bigAmount: { fontSize: FontSize.xxl, fontWeight: '900', color: Colors.primaryDark },
+  bigAmtLabel: { fontSize: FontSize.sm, color: Colors.textSecondary, marginTop: 2 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm, marginBottom: Spacing.md },
+  gridItem: {
+    flexGrow: 1,
+    flexBasis: '46%',
+    backgroundColor: Colors.surfaceSecondary,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+    padding: Spacing.sm,
+  },
+  gridLabel: { fontSize: FontSize.xs, color: Colors.textSecondary, fontWeight: '800' },
+  gridValue: { fontSize: FontSize.md, fontWeight: '900', color: Colors.text, marginTop: 3 },
+  totalSection: { marginTop: Spacing.md, borderTopWidth: 1, borderTopColor: Colors.borderLight, paddingTop: Spacing.md },
+  totalRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: Spacing.xs, gap: Spacing.md },
+  totalLabel: { fontSize: FontSize.sm, color: Colors.textSecondary, fontWeight: '800' },
+  totalValue: { fontSize: FontSize.md, fontWeight: '900', flexShrink: 1, textAlign: 'right' },
   sectionTitle: {
     fontSize: FontSize.xs,
-    fontWeight: '700',
+    fontWeight: '900',
     color: Colors.textSecondary,
-    letterSpacing: 0.8,
     marginBottom: Spacing.sm,
     marginTop: Spacing.lg,
   },
-  summaryCard: { marginBottom: Spacing.sm },
-  summaryTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: Spacing.md },
-  bigAmount: { fontSize: FontSize.xxxl, fontWeight: '800', color: Colors.primary },
-  bigAmtLabel: { fontSize: FontSize.sm, color: Colors.textSecondary },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: Spacing.md },
-  totalSection: { marginTop: Spacing.md, borderTopWidth: 1, borderTopColor: Colors.borderLight, paddingTop: Spacing.md },
-  totalRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: Spacing.xs },
-  totalLabel: { fontSize: FontSize.sm, color: Colors.textSecondary },
-  totalValue: { fontSize: FontSize.md, fontWeight: '700', color: Colors.text },
   memberCard: { marginBottom: Spacing.sm },
   memberRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
   avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: Radius.full,
+    width: 42,
+    height: 42,
+    borderRadius: Radius.sm,
     backgroundColor: Colors.primaryBg,
+    borderWidth: 1,
+    borderColor: Colors.primaryBorder,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarText: { fontSize: FontSize.lg, fontWeight: '700', color: Colors.primary },
-  memberName: { fontSize: FontSize.md, fontWeight: '700', color: Colors.text },
-  orgTag: { backgroundColor: Colors.accentBg, borderRadius: Radius.full, paddingHorizontal: 6, paddingVertical: 2 },
-  orgTagText: { fontSize: FontSize.xs, color: Colors.accentDark, fontWeight: '700' },
-  memberMeta: { fontSize: FontSize.sm, color: Colors.textSecondary, marginBottom: Spacing.xs },
+  avatarText: { fontSize: FontSize.lg, fontWeight: '900', color: Colors.primaryDark },
+  memberInfo: { flex: 1 },
+  memberNameRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.xs, flexWrap: 'wrap' },
+  memberName: { flexShrink: 1, fontSize: FontSize.md, fontWeight: '900', color: Colors.text },
+  memberMeta: { fontSize: FontSize.sm, color: Colors.textSecondary, marginTop: 2, marginBottom: Spacing.xs },
   cycleCard: { marginBottom: Spacing.sm },
   cycleHeader: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, marginBottom: Spacing.sm },
   cycleNumBadge: {
-    width: 32,
-    height: 32,
-    borderRadius: Radius.full,
+    width: 34,
+    height: 34,
+    borderRadius: Radius.sm,
     backgroundColor: Colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  cycleNumText: { fontSize: FontSize.sm, fontWeight: '800', color: '#fff' },
-  cycleDate: { fontSize: FontSize.md, fontWeight: '700', color: Colors.text },
-  cycleReceiver: { fontSize: FontSize.sm, color: Colors.textSecondary },
-  cyclePayout: { fontSize: FontSize.md, fontWeight: '700', color: Colors.primary },
+  cycleNumText: { fontSize: FontSize.sm, fontWeight: '900', color: Colors.textOnPrimary },
+  cycleTitleWrap: { flex: 1 },
+  cycleDate: { fontSize: FontSize.md, fontWeight: '900', color: Colors.text },
+  cycleReceiver: { fontSize: FontSize.sm, color: Colors.textSecondary, marginTop: 2 },
+  receiverName: { color: Colors.primaryDark, fontWeight: '900' },
+  cycleRight: { alignItems: 'flex-end', maxWidth: '35%', gap: 4 },
+  cyclePayout: { fontSize: FontSize.sm, fontWeight: '900', color: Colors.primaryDark, textAlign: 'right' },
   paymentRows: {
     borderTopWidth: 1,
     borderTopColor: Colors.borderLight,
@@ -327,16 +375,25 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    gap: Spacing.sm,
     paddingVertical: 2,
   },
-  paymentMiniName: { fontSize: FontSize.sm, color: Colors.text, flex: 1 },
-  paymentMiniStatus: { borderRadius: Radius.full, paddingHorizontal: 8, paddingVertical: 2 },
-  paymentMiniStatusText: { fontSize: FontSize.xs, fontWeight: '700' },
-  disclaimer: {
-    backgroundColor: Colors.borderLight,
-    borderRadius: Radius.md,
+  paymentMiniName: { fontSize: FontSize.sm, color: Colors.text, flex: 1, fontWeight: '700' },
+  paymentMiniStatus: {
+    borderRadius: Radius.sm,
+    borderWidth: 1,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  paymentMiniStatusText: { fontSize: FontSize.xs, fontWeight: '900' },
+  shareFooter: { marginTop: Spacing.md },
+  notice: {
+    backgroundColor: Colors.surfaceSecondary,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: Colors.border,
     padding: Spacing.md,
     marginTop: Spacing.md,
   },
-  disclaimerText: { fontSize: FontSize.sm, color: Colors.textSecondary, lineHeight: 20, textAlign: 'center' },
+  noticeText: { fontSize: FontSize.sm, color: Colors.textSecondary, lineHeight: 20, textAlign: 'center' },
 });

@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import React, { useState } from 'react';
 import {
   Alert,
   FlatList,
@@ -12,16 +13,20 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Badge from '../../components/common/Badge';
 import Button from '../../components/common/Button';
 import Card from '../../components/common/Card';
+import ProgressBar from '../../components/common/ProgressBar';
+import ScreenHeader from '../../components/common/ScreenHeader';
 import { useCircles } from '../../store/CircleContext';
-import { Colors, FontSize, Radius, Shadow, Spacing } from '../../theme';
+import { Colors, FontSize, Radius, Spacing } from '../../theme';
 import { Member } from '../../types';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 type Props = { navigation: NativeStackNavigationProp<any> };
 
-function uid() { return Math.random().toString(36).slice(2) + Date.now().toString(36); }
+function uid() {
+  return Math.random().toString(36).slice(2) + Date.now().toString(36);
+}
 
 function MemberRow({
   member,
@@ -62,12 +67,12 @@ function MemberRow({
           {!editing ? (
             <>
               <View style={styles.nameRow}>
-                <Text style={styles.memberName}>{member.name}</Text>
+                <Text style={styles.memberName} numberOfLines={1}>{member.name}</Text>
                 {member.isOrganizer && (
-                  <View style={styles.orgBadge}><Text style={styles.orgText}>Organizer</Text></View>
+                  <Badge label="Organizer" color={Colors.accentDark} bg={Colors.accentBg} small dot />
                 )}
               </View>
-              {!!member.notes && <Text style={styles.memberNotes}>{member.notes}</Text>}
+              {!!member.notes && <Text style={styles.memberNotes} numberOfLines={2}>{member.notes}</Text>}
             </>
           ) : (
             <>
@@ -80,7 +85,7 @@ function MemberRow({
                 autoFocus
               />
               <TextInput
-                style={[styles.editInput, { marginTop: 4 }]}
+                style={[styles.editInput, styles.notesInput]}
                 value={notes}
                 onChangeText={setNotes}
                 placeholder="Notes (optional)"
@@ -89,47 +94,28 @@ function MemberRow({
             </>
           )}
         </View>
-        <View style={styles.actions}>
-          {!editing ? (
-            <>
-              <TouchableOpacity onPress={() => setEditing(true)} style={styles.iconBtn}>
-                <Text style={styles.iconBtnText}>✎</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => onDelete(member.id)} style={[styles.iconBtn, styles.deleteBtn]}>
-                <Text style={[styles.iconBtnText, { color: Colors.error }]}>✕</Text>
-              </TouchableOpacity>
-            </>
-          ) : (
-            <TouchableOpacity onPress={save} style={[styles.iconBtn, styles.saveBtn]}>
-              <Text style={[styles.iconBtnText, { color: Colors.success }]}>✓</Text>
-            </TouchableOpacity>
-          )}
-        </View>
       </View>
 
-      {!editing && (
-        <View style={styles.memberFooter}>
-          <TouchableOpacity onPress={() => onToggleOrganizer(member.id)} style={styles.orgToggle}>
-            <Text style={styles.orgToggleText}>
-              {member.isOrganizer ? '★ Organizer' : '☆ Set as Organizer'}
-            </Text>
-          </TouchableOpacity>
-          <View style={styles.reorderBtns}>
-            <TouchableOpacity
-              disabled={index === 0}
-              onPress={() => onMoveUp(index)}
-              style={[styles.reorderBtn, index === 0 && styles.reorderBtnDisabled]}>
-              <Text style={styles.reorderBtnText}>↑</Text>
+      <View style={styles.memberFooter}>
+        {!editing ? (
+          <>
+            <TouchableOpacity onPress={() => onToggleOrganizer(member.id)} style={styles.footerAction}>
+              <Text style={styles.footerActionText}>{member.isOrganizer ? 'Organizer' : 'Set organizer'}</Text>
             </TouchableOpacity>
-            <TouchableOpacity
-              disabled={index === total - 1}
-              onPress={() => onMoveDown(index)}
-              style={[styles.reorderBtn, index === total - 1 && styles.reorderBtnDisabled]}>
-              <Text style={styles.reorderBtnText}>↓</Text>
-            </TouchableOpacity>
+            <View style={styles.footerButtons}>
+              <MiniButton label="Up" disabled={index === 0} onPress={() => onMoveUp(index)} />
+              <MiniButton label="Down" disabled={index === total - 1} onPress={() => onMoveDown(index)} />
+              <MiniButton label="Edit" onPress={() => setEditing(true)} />
+              <MiniButton label="Remove" danger onPress={() => onDelete(member.id)} />
+            </View>
+          </>
+        ) : (
+          <View style={styles.editActions}>
+            <Button label="Save" size="sm" fullWidth={false} onPress={save} />
+            <Button label="Cancel" size="sm" fullWidth={false} variant="ghost" onPress={() => setEditing(false)} />
           </View>
-        </View>
-      )}
+        )}
+      </View>
     </Card>
   );
 }
@@ -146,13 +132,13 @@ export default function MembersScreen({ navigation }: Props) {
       Alert.alert('Limit Reached', `This circle needs exactly ${needed} member(s).`);
       return;
     }
-    const m: Member = {
+    const member: Member = {
       id: uid(),
       name: newName.trim(),
       isOrganizer: membersList.length === 0,
       notes: '',
     };
-    setMembersList(prev => [...prev, m]);
+    setMembersList(prev => [...prev, member]);
     setNewName('');
   }
 
@@ -169,17 +155,17 @@ export default function MembersScreen({ navigation }: Props) {
 
   function moveUp(index: number) {
     setMembersList(prev => {
-      const a = [...prev];
-      [a[index - 1], a[index]] = [a[index], a[index - 1]];
-      return a;
+      const next = [...prev];
+      [next[index - 1], next[index]] = [next[index], next[index - 1]];
+      return next;
     });
   }
 
   function moveDown(index: number) {
     setMembersList(prev => {
-      const a = [...prev];
-      [a[index], a[index + 1]] = [a[index + 1], a[index]];
-      return a;
+      const next = [...prev];
+      [next[index], next[index + 1]] = [next[index + 1], next[index]];
+      return next;
     });
   }
 
@@ -200,21 +186,18 @@ export default function MembersScreen({ navigation }: Props) {
   }
 
   const remaining = needed - membersList.length;
+  const progress = needed > 0 ? (membersList.length / needed) * 100 : 0;
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
-      <StatusBar backgroundColor={Colors.primary} barStyle="light-content" />
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Text style={styles.backIcon}>←</Text>
-        </TouchableOpacity>
-        <View>
-          <Text style={styles.headerTitle}>Add Members</Text>
-          <Text style={styles.headerSub}>{membersList.length} of {needed} added</Text>
-        </View>
-      </View>
+      <StatusBar backgroundColor={Colors.primaryDark} barStyle="light-content" />
+      <ScreenHeader
+        title="Members"
+        subtitle={`${membersList.length} of ${needed} added`}
+        onBack={() => navigation.goBack()}
+      />
 
-      <KeyboardAvoidingView style={{ flex: 1, backgroundColor: Colors.background }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <FlatList
           data={membersList}
           keyExtractor={item => item.id}
@@ -231,166 +214,173 @@ export default function MembersScreen({ navigation }: Props) {
             />
           )}
           contentContainerStyle={styles.list}
+          showsVerticalScrollIndicator={false}
           ListHeaderComponent={
             <View>
-              {remaining > 0 && (
-                <View style={styles.addWrap}>
-                  <TextInput
-                    style={styles.addInput}
-                    value={newName}
-                    onChangeText={setNewName}
-                    placeholder="Member name…"
-                    placeholderTextColor={Colors.textLight}
-                    onSubmitEditing={addMember}
-                    returnKeyType="done"
-                  />
-                  <TouchableOpacity style={styles.addBtn} onPress={addMember} activeOpacity={0.8}>
-                    <Text style={styles.addBtnText}>Add</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-              <View style={styles.progress}>
-                <View style={[styles.progressBar, { width: `${Math.min(100, (membersList.length / needed) * 100)}%` as any }]} />
+              <View style={styles.stepBand}>
+                <Step label="Mode" done />
+                <Step label="Details" done />
+                <Step label="Members" active />
+                <Step label="Order" />
+                <Step label="Preview" />
               </View>
-              <Text style={styles.progressLabel}>
-                {remaining > 0 ? `${remaining} more needed` : '✓ All members added'}
-              </Text>
-              <Text style={styles.sectionLabel}>MEMBERS</Text>
+
+              <Card variant="filled" style={styles.addCard}>
+                <Text style={styles.addTitle}>Add each payout participant</Text>
+                <Text style={styles.addSub}>
+                  {remaining > 0 ? `${remaining} member(s) still needed.` : 'The member list is complete.'}
+                </Text>
+                {remaining > 0 && (
+                  <View style={styles.addWrap}>
+                    <TextInput
+                      style={styles.addInput}
+                      value={newName}
+                      onChangeText={setNewName}
+                      placeholder="Member name"
+                      placeholderTextColor={Colors.textLight}
+                      onSubmitEditing={addMember}
+                      returnKeyType="done"
+                    />
+                    <Button label="Add" size="sm" fullWidth={false} onPress={addMember} />
+                  </View>
+                )}
+                <ProgressBar percent={progress} label="Member list" />
+              </Card>
+
+              <Text style={styles.sectionLabel}>Members</Text>
             </View>
           }
           ListFooterComponent={
             <Button
-              label={`Next: Set Payout Order →`}
+              label="Next: Set Payout Order"
               onPress={proceed}
               disabled={membersList.length !== needed}
-              style={{ marginTop: Spacing.md }}
+              style={styles.nextBtn}
             />
           }
-          showsVerticalScrollIndicator={false}
         />
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
+function MiniButton({ label, onPress, disabled, danger }: { label: string; onPress: () => void; disabled?: boolean; danger?: boolean }) {
+  return (
+    <TouchableOpacity
+      disabled={disabled}
+      onPress={onPress}
+      style={[styles.miniBtn, danger && styles.miniBtnDanger, disabled && styles.miniBtnDisabled]}>
+      <Text style={[styles.miniBtnText, danger && styles.miniBtnTextDanger]}>{label}</Text>
+    </TouchableOpacity>
+  );
+}
+
+function Step({ label, active, done }: { label: string; active?: boolean; done?: boolean }) {
+  return (
+    <View style={[styles.step, done && styles.stepDone, active && styles.stepActive]}>
+      <Text style={[styles.stepText, active && styles.stepTextActive, done && styles.stepTextDone]}>{label}</Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.primary },
-  header: {
-    backgroundColor: Colors.primary,
-    paddingHorizontal: Spacing.md,
-    paddingTop: Spacing.sm,
-    paddingBottom: Spacing.xl,
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: Spacing.sm,
+  safe: { flex: 1, backgroundColor: Colors.primaryDark },
+  flex: { flex: 1, backgroundColor: Colors.background },
+  list: { padding: Spacing.md, paddingBottom: Spacing.xxl, flexGrow: 1 },
+  stepBand: { flexDirection: 'row', gap: Spacing.xs, marginBottom: Spacing.lg },
+  step: {
+    flex: 1,
+    minHeight: 30,
+    borderRadius: Radius.sm,
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: Spacing.xs,
   },
-  backBtn: { padding: Spacing.xs, marginTop: 2 },
-  backIcon: { fontSize: 22, color: '#fff', fontWeight: '700' },
-  headerTitle: { fontSize: FontSize.xl, fontWeight: '800', color: '#fff' },
-  headerSub: { fontSize: FontSize.sm, color: 'rgba(255,255,255,0.75)', marginTop: 2 },
-  list: { padding: Spacing.md, paddingBottom: Spacing.xxl },
+  stepDone: { backgroundColor: Colors.primaryBg, borderColor: Colors.primaryBorder },
+  stepActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
+  stepText: { fontSize: FontSize.xxs, fontWeight: '800', color: Colors.textSecondary },
+  stepTextActive: { color: Colors.textOnPrimary },
+  stepTextDone: { color: Colors.primaryDark },
+  addCard: { marginBottom: Spacing.md },
+  addTitle: { fontSize: FontSize.lg, fontWeight: '900', color: Colors.text },
+  addSub: { fontSize: FontSize.sm, color: Colors.textSecondary, marginTop: 2, marginBottom: Spacing.md },
   addWrap: {
     flexDirection: 'row',
-    backgroundColor: Colors.surface,
-    borderRadius: Radius.lg,
-    padding: Spacing.sm,
-    marginBottom: Spacing.md,
+    alignItems: 'center',
     gap: Spacing.sm,
-    ...Shadow.sm,
+    marginBottom: Spacing.md,
   },
   addInput: {
     flex: 1,
+    minHeight: 44,
+    borderRadius: Radius.sm,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.surface,
+    paddingHorizontal: Spacing.md,
     fontSize: FontSize.md,
     color: Colors.text,
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: Spacing.xs,
   },
-  addBtn: {
-    backgroundColor: Colors.primary,
-    borderRadius: Radius.md,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    justifyContent: 'center',
-  },
-  addBtnText: { color: '#fff', fontWeight: '700', fontSize: FontSize.sm },
-  progress: {
-    height: 4,
-    backgroundColor: Colors.border,
-    borderRadius: Radius.full,
-    marginBottom: Spacing.xs,
-    overflow: 'hidden',
-  },
-  progressBar: { height: 4, backgroundColor: Colors.primary, borderRadius: Radius.full },
-  progressLabel: { fontSize: FontSize.sm, color: Colors.textSecondary, marginBottom: Spacing.md },
   sectionLabel: {
     fontSize: FontSize.xs,
-    fontWeight: '700',
+    fontWeight: '900',
     color: Colors.textSecondary,
-    letterSpacing: 0.8,
     marginBottom: Spacing.sm,
   },
   memberCard: { marginBottom: Spacing.sm },
-  memberRow: { flexDirection: 'row', alignItems: 'flex-start' },
+  memberRow: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.sm },
   avatarWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: Radius.full,
+    width: 42,
+    height: 42,
+    borderRadius: Radius.sm,
     backgroundColor: Colors.primaryBg,
+    borderWidth: 1,
+    borderColor: Colors.primaryBorder,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: Spacing.sm,
   },
-  avatarText: { fontSize: FontSize.lg, fontWeight: '700', color: Colors.primary },
+  avatarText: { fontSize: FontSize.lg, fontWeight: '900', color: Colors.primaryDark },
   memberInfo: { flex: 1 },
-  nameRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 },
-  memberName: { fontSize: FontSize.md, fontWeight: '700', color: Colors.text },
-  orgBadge: {
-    backgroundColor: Colors.accentBg,
-    borderRadius: Radius.full,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-  },
-  orgText: { fontSize: FontSize.xs, color: Colors.accentDark, fontWeight: '700' },
-  memberNotes: { fontSize: FontSize.sm, color: Colors.textSecondary, marginTop: 2 },
+  nameRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: Spacing.xs },
+  memberName: { flexShrink: 1, fontSize: FontSize.md, fontWeight: '900', color: Colors.text },
+  memberNotes: { fontSize: FontSize.sm, color: Colors.textSecondary, marginTop: 3, lineHeight: 19 },
   editInput: {
+    minHeight: 40,
+    borderRadius: Radius.sm,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.surfaceSecondary,
+    paddingHorizontal: Spacing.sm,
     fontSize: FontSize.md,
     color: Colors.text,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.primary,
-    paddingVertical: 4,
   },
-  actions: { flexDirection: 'row', gap: 4 },
-  iconBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: Radius.full,
-    backgroundColor: Colors.borderLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  deleteBtn: { backgroundColor: Colors.errorBg },
-  saveBtn: { backgroundColor: Colors.successBg },
-  iconBtnText: { fontSize: 16, color: Colors.textSecondary, fontWeight: '700' },
+  notesInput: { marginTop: Spacing.xs },
   memberFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: Spacing.sm,
-    paddingTop: Spacing.sm,
     borderTopWidth: 1,
     borderTopColor: Colors.borderLight,
+    marginTop: Spacing.md,
+    paddingTop: Spacing.sm,
   },
-  orgToggle: { flex: 1 },
-  orgToggleText: { fontSize: FontSize.sm, color: Colors.textSecondary },
-  reorderBtns: { flexDirection: 'row', gap: 4 },
-  reorderBtn: {
-    width: 30,
-    height: 30,
-    borderRadius: Radius.full,
-    backgroundColor: Colors.primaryBg,
+  footerAction: { marginBottom: Spacing.sm },
+  footerActionText: { fontSize: FontSize.sm, color: Colors.primaryDark, fontWeight: '800' },
+  footerButtons: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.xs },
+  miniBtn: {
+    minHeight: 30,
+    borderRadius: Radius.sm,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    paddingHorizontal: Spacing.sm,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: Colors.surface,
   },
-  reorderBtnDisabled: { opacity: 0.3 },
-  reorderBtnText: { fontSize: 16, color: Colors.primary, fontWeight: '700' },
+  miniBtnDanger: { backgroundColor: Colors.errorBg, borderColor: Colors.errorBorder },
+  miniBtnDisabled: { opacity: 0.35 },
+  miniBtnText: { fontSize: FontSize.xs, color: Colors.textSecondary, fontWeight: '900' },
+  miniBtnTextDanger: { color: Colors.error },
+  editActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: Spacing.sm },
+  nextBtn: { marginTop: Spacing.md },
 });

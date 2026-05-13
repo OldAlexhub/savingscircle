@@ -1,17 +1,19 @@
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import React from 'react';
 import {
   ScrollView,
   StatusBar,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Badge from '../../components/common/Badge';
+import Card from '../../components/common/Card';
+import ScreenHeader from '../../components/common/ScreenHeader';
 import { useCircles } from '../../store/CircleContext';
-import { Colors, FontSize, Radius, Shadow, Spacing } from '../../theme';
+import { Colors, FontSize, Radius, Spacing } from '../../theme';
 import { BuilderMode } from '../../types';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
@@ -19,37 +21,41 @@ type Props = {
 
 interface ModeCard {
   mode: BuilderMode;
-  icon: string;
   title: string;
   subtitle: string;
   inputs: string[];
   outputs: string[];
+  accent: string;
+  accentBg: string;
 }
 
 const MODES: ModeCard[] = [
   {
     mode: 'A',
-    icon: '🎯',
-    title: 'I know the payout & duration',
-    subtitle: 'Set a target payout and how long the circle runs.',
-    inputs: ['Target payout amount', 'Payment frequency', 'Number of payment rounds'],
-    outputs: ['Number of members needed', 'Contribution per person', 'Full schedule'],
+    title: 'Payout and duration',
+    subtitle: 'Use this when the group already knows the target payout and how many rounds it should run.',
+    inputs: ['Target payout', 'Payment frequency', 'Number of rounds'],
+    outputs: ['Members needed', 'Contribution per person', 'Complete schedule'],
+    accent: Colors.primary,
+    accentBg: Colors.primaryBg,
   },
   {
     mode: 'B',
-    icon: '💡',
-    title: 'I know the payout & contribution',
-    subtitle: "Set a target payout and the max each person can contribute.",
-    inputs: ['Target payout amount', 'Max contribution per person', 'Payment frequency'],
-    outputs: ['Number of members needed', 'Circle duration', 'Full schedule'],
+    title: 'Payout and contribution',
+    subtitle: 'Use this when each member has a maximum amount they can contribute per cycle.',
+    inputs: ['Target payout', 'Max contribution', 'Payment frequency'],
+    outputs: ['Members needed', 'Circle duration', 'Complete schedule'],
+    accent: Colors.accentDark,
+    accentBg: Colors.accentBg,
   },
   {
     mode: 'C',
-    icon: '👥',
-    title: 'I know the number of people',
-    subtitle: 'You already have a group — set the payout and let us do the math.',
-    inputs: ['Target payout amount', 'Number of members', 'Payment frequency'],
-    outputs: ['Contribution per person', 'Circle duration', 'Full schedule'],
+    title: 'Fixed group size',
+    subtitle: 'Use this when the member list is known and the app should calculate the contribution.',
+    inputs: ['Target payout', 'Member count', 'Payment frequency'],
+    outputs: ['Contribution per person', 'Circle duration', 'Complete schedule'],
+    accent: Colors.info,
+    accentBg: Colors.infoBg,
   },
 ];
 
@@ -63,61 +69,53 @@ export default function ModeSelectionScreen({ navigation }: Props) {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
-      <StatusBar backgroundColor={Colors.primary} barStyle="light-content" />
-
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Text style={styles.backIcon}>←</Text>
-        </TouchableOpacity>
-        <View>
-          <Text style={styles.headerTitle}>Planning Mode</Text>
-          <Text style={styles.headerSub}>How do you want to build your circle?</Text>
-        </View>
-      </View>
+      <StatusBar backgroundColor={Colors.primaryDark} barStyle="light-content" />
+      <ScreenHeader
+        title="Planning Mode"
+        subtitle="Choose the inputs you already know"
+        onBack={() => navigation.goBack()}
+      />
 
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}>
+        <View style={styles.stepBand}>
+          <Step active label="Mode" />
+          <Step label="Details" />
+          <Step label="Members" />
+          <Step label="Order" />
+          <Step label="Preview" />
+        </View>
 
         {MODES.map(m => (
-          <TouchableOpacity
+          <Card
             key={m.mode}
-            activeOpacity={0.82}
-            onPress={() => handleSelectMode(m.mode)}
-            style={styles.modeCard}>
+            variant="elevated"
+            style={styles.modeCard}
+            onPress={() => handleSelectMode(m.mode)}>
             <View style={styles.modeHeader}>
-              <Text style={styles.modeIcon}>{m.icon}</Text>
+              <View style={[styles.modeBadge, { backgroundColor: m.accentBg, borderColor: m.accent }]}>
+                <Text style={[styles.modeBadgeText, { color: m.accent }]}>{m.mode}</Text>
+              </View>
               <View style={styles.modeTitles}>
-                <Text style={styles.modeLabel}>Mode {m.mode}</Text>
                 <Text style={styles.modeTitle}>{m.title}</Text>
+                <Text style={styles.modeSub}>{m.subtitle}</Text>
               </View>
+              <Text style={[styles.choose, { color: m.accent }]}>Choose</Text>
             </View>
-            <Text style={styles.modeSub}>{m.subtitle}</Text>
-            <View style={styles.divider} />
-            <View style={styles.lists}>
-              <View style={styles.listCol}>
-                <Text style={styles.listHead}>YOU ENTER</Text>
-                {m.inputs.map((inp, i) => (
-                  <Text key={i} style={styles.listItem}>· {inp}</Text>
-                ))}
-              </View>
-              <View style={[styles.listCol, { flex: 1 }]}>
-                <Text style={[styles.listHead, { color: Colors.primary }]}>YOU GET</Text>
-                {m.outputs.map((out, i) => (
-                  <Text key={i} style={[styles.listItem, { color: Colors.primary }]}>✓ {out}</Text>
-                ))}
-              </View>
+
+            <View style={styles.modeGrid}>
+              <ModeList title="You enter" items={m.inputs} />
+              <ModeList title="You get" items={m.outputs} accent={m.accent} />
             </View>
-            <View style={styles.cardArrow}>
-              <Text style={styles.arrowText}>Choose →</Text>
-            </View>
-          </TouchableOpacity>
+          </Card>
         ))}
 
-        <View style={styles.disclaimer}>
-          <Text style={styles.disclaimerText}>
-            💡 Savings Circle is a planning and bookkeeping tool only. It does not process payments or manage real money.
+        <View style={styles.notice}>
+          <Text style={styles.noticeTitle}>Planning note</Text>
+          <Text style={styles.noticeText}>
+            Savings Circle helps with group planning and bookkeeping. It does not process payments or hold money.
           </Text>
         </View>
       </ScrollView>
@@ -125,60 +123,89 @@ export default function ModeSelectionScreen({ navigation }: Props) {
   );
 }
 
+function Step({ label, active }: { label: string; active?: boolean }) {
+  return (
+    <View style={[styles.step, active && styles.stepActive]}>
+      <Text style={[styles.stepText, active && styles.stepTextActive]}>{label}</Text>
+    </View>
+  );
+}
+
+function ModeList({ title, items, accent }: { title: string; items: string[]; accent?: string }) {
+  return (
+    <View style={styles.listCol}>
+      <Text style={[styles.listHead, accent ? { color: accent } : null]}>{title}</Text>
+      {items.map(item => (
+        <View key={item} style={styles.listItemRow}>
+          <Badge label="" color={accent ?? Colors.textLight} bg={accent ? Colors.primaryBg : Colors.surfaceInset} small />
+          <Text style={[styles.listItem, accent ? { color: Colors.text } : null]}>{item}</Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.primary },
-  header: {
-    backgroundColor: Colors.primary,
-    paddingHorizontal: Spacing.md,
-    paddingTop: Spacing.sm,
-    paddingBottom: Spacing.xl,
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: Spacing.sm,
-  },
-  backBtn: { padding: Spacing.xs, marginTop: 2 },
-  backIcon: { fontSize: 22, color: '#fff', fontWeight: '700' },
-  headerTitle: { fontSize: FontSize.xl, fontWeight: '800', color: '#fff' },
-  headerSub: { fontSize: FontSize.sm, color: 'rgba(255,255,255,0.75)', marginTop: 2 },
+  safe: { flex: 1, backgroundColor: Colors.primaryDark },
   scroll: { flex: 1, backgroundColor: Colors.background },
   content: { padding: Spacing.md, paddingBottom: Spacing.xxl },
-  modeCard: {
+  stepBand: {
+    flexDirection: 'row',
+    gap: Spacing.xs,
+    marginBottom: Spacing.lg,
+  },
+  step: {
+    flex: 1,
+    minHeight: 30,
+    borderRadius: Radius.sm,
     backgroundColor: Colors.surface,
-    borderRadius: Radius.lg,
-    padding: Spacing.lg,
-    marginBottom: Spacing.md,
-    ...Shadow.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: Spacing.xs,
   },
-  modeHeader: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: Spacing.sm },
-  modeIcon: { fontSize: 36, marginRight: Spacing.md },
+  stepActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
+  stepText: { fontSize: FontSize.xxs, fontWeight: '800', color: Colors.textSecondary },
+  stepTextActive: { color: Colors.textOnPrimary },
+  modeCard: { marginBottom: Spacing.md },
+  modeHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.md, marginBottom: Spacing.md },
+  modeBadge: {
+    width: 42,
+    height: 42,
+    borderRadius: Radius.sm,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modeBadgeText: { fontSize: FontSize.lg, fontWeight: '900' },
   modeTitles: { flex: 1 },
-  modeLabel: {
-    fontSize: FontSize.xs,
-    fontWeight: '700',
-    color: Colors.primary,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
+  modeTitle: { fontSize: FontSize.lg, fontWeight: '900', color: Colors.text },
+  modeSub: { fontSize: FontSize.sm, color: Colors.textSecondary, lineHeight: 20, marginTop: 3 },
+  choose: { fontSize: FontSize.sm, fontWeight: '900' },
+  modeGrid: {
+    flexDirection: 'row',
+    gap: Spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: Colors.borderLight,
+    paddingTop: Spacing.md,
   },
-  modeTitle: { fontSize: FontSize.lg, fontWeight: '700', color: Colors.text, marginTop: 2 },
-  modeSub: { fontSize: FontSize.sm, color: Colors.textSecondary, lineHeight: 20, marginBottom: Spacing.md },
-  divider: { height: 1, backgroundColor: Colors.border, marginBottom: Spacing.md },
-  lists: { flexDirection: 'row', gap: Spacing.md },
   listCol: { flex: 1 },
   listHead: {
     fontSize: FontSize.xs,
-    fontWeight: '700',
+    fontWeight: '900',
     color: Colors.textSecondary,
-    letterSpacing: 0.8,
     marginBottom: Spacing.xs,
   },
-  listItem: { fontSize: FontSize.sm, color: Colors.textSecondary, lineHeight: 22 },
-  cardArrow: { marginTop: Spacing.md, alignItems: 'flex-end' },
-  arrowText: { fontSize: FontSize.sm, fontWeight: '700', color: Colors.primary },
-  disclaimer: {
+  listItemRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.xs, marginBottom: Spacing.xs },
+  listItem: { flex: 1, fontSize: FontSize.sm, color: Colors.textSecondary, lineHeight: 19 },
+  notice: {
     backgroundColor: Colors.accentBg,
-    borderRadius: Radius.md,
+    borderRadius: 8,
     padding: Spacing.md,
-    marginTop: Spacing.sm,
+    borderWidth: 1,
+    borderColor: Colors.accentBorder,
   },
-  disclaimerText: { fontSize: FontSize.sm, color: Colors.accentDark, lineHeight: 20 },
+  noticeTitle: { fontSize: FontSize.sm, fontWeight: '900', color: Colors.accentDark, marginBottom: 2 },
+  noticeText: { fontSize: FontSize.sm, color: Colors.accentDark, lineHeight: 20 },
 });

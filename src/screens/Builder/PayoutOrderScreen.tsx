@@ -1,3 +1,4 @@
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import React, { useState } from 'react';
 import {
   Alert,
@@ -9,14 +10,14 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Badge from '../../components/common/Badge';
 import Button from '../../components/common/Button';
 import Card from '../../components/common/Card';
+import ScreenHeader from '../../components/common/ScreenHeader';
 import { useCircles } from '../../store/CircleContext';
 import { Colors, FontSize, Radius, Spacing } from '../../theme';
 import { Member } from '../../types';
 import { shuffleArray } from '../../utils/calculations';
-import { formatDate } from '../../utils/dateUtils';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 type Props = { navigation: NativeStackNavigationProp<any> };
 
@@ -33,18 +34,18 @@ export default function PayoutOrderScreen({ navigation }: Props) {
   function moveUp(index: number) {
     if (isLocked || index === 0) { return; }
     setOrder(prev => {
-      const a = [...prev];
-      [a[index - 1], a[index]] = [a[index], a[index - 1]];
-      return a;
+      const next = [...prev];
+      [next[index - 1], next[index]] = [next[index], next[index - 1]];
+      return next;
     });
   }
 
   function moveDown(index: number) {
     if (isLocked || index === order.length - 1) { return; }
     setOrder(prev => {
-      const a = [...prev];
-      [a[index], a[index + 1]] = [a[index + 1], a[index]];
-      return a;
+      const next = [...prev];
+      [next[index], next[index + 1]] = [next[index + 1], next[index]];
+      return next;
     });
   }
 
@@ -52,13 +53,10 @@ export default function PayoutOrderScreen({ navigation }: Props) {
     if (isLocked) { return; }
     Alert.alert(
       'Randomize Order?',
-      'Review this order before saving.\n\nSavings Circle only helps you organize your group and does not manage or guarantee payments.',
+      'Review this order before saving. Savings Circle does not manage or guarantee payments.',
       [
         { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Randomize',
-          onPress: () => setOrder(shuffleArray([...order])),
-        },
+        { text: 'Randomize', onPress: () => setOrder(shuffleArray([...order])) },
       ],
     );
   }
@@ -66,7 +64,7 @@ export default function PayoutOrderScreen({ navigation }: Props) {
   function lockOrder() {
     Alert.alert(
       'Lock This Order?',
-      'Once locked, the payout order is fixed for the schedule. You can still unlock it before saving the circle.',
+      'Once locked, the payout order is fixed for the generated schedule. You can unlock it before saving.',
       [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Lock', onPress: () => setIsLocked(true) },
@@ -94,29 +92,19 @@ export default function PayoutOrderScreen({ navigation }: Props) {
     navigation.navigate('SchedulePreview');
   }
 
-  const startDate = draft.startDate ?? '';
-
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
-      <StatusBar backgroundColor={Colors.primary} barStyle="light-content" />
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Text style={styles.backIcon}>←</Text>
-        </TouchableOpacity>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.headerTitle}>Payout Order</Text>
-          <Text style={styles.headerSub}>Who collects first?</Text>
-        </View>
-        {!isLocked ? (
-          <TouchableOpacity onPress={randomize} style={styles.shuffleBtn} activeOpacity={0.8}>
-            <Text style={styles.shuffleText}>🔀 Shuffle</Text>
-          </TouchableOpacity>
-        ) : (
-          <TouchableOpacity onPress={() => setIsLocked(false)} style={styles.unlockBtn} activeOpacity={0.8}>
-            <Text style={styles.unlockText}>🔓 Unlock</Text>
-          </TouchableOpacity>
-        )}
-      </View>
+      <StatusBar backgroundColor={Colors.primaryDark} barStyle="light-content" />
+      <ScreenHeader
+        title="Payout Order"
+        subtitle={isLocked ? 'Order locked for schedule preview' : 'Arrange who receives each cycle'}
+        onBack={() => navigation.goBack()}
+        right={
+          isLocked
+            ? <Button label="Unlock" size="sm" fullWidth={false} variant="ghost" onPress={() => setIsLocked(false)} />
+            : <Button label="Shuffle" size="sm" fullWidth={false} variant="ghost" onPress={randomize} />
+        }
+      />
 
       <FlatList
         data={order}
@@ -125,70 +113,74 @@ export default function PayoutOrderScreen({ navigation }: Props) {
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={
           <View>
-            {isLocked && (
-              <View style={styles.lockedBanner}>
-                <Text style={styles.lockedText}>🔒 Order is locked. Tap Unlock to edit.</Text>
+            <View style={styles.stepBand}>
+              <Step label="Mode" done />
+              <Step label="Details" done />
+              <Step label="Members" done />
+              <Step label="Order" active />
+              <Step label="Preview" />
+            </View>
+            <Card variant="filled" style={styles.orderSummary}>
+              <View style={styles.summaryTop}>
+                <View>
+                  <Text style={styles.summaryTitle}>Payout sequence</Text>
+                  <Text style={styles.summarySub}>{order.length} turns generated from the member list.</Text>
+                </View>
+                <Badge
+                  label={isLocked ? 'Locked' : 'Editable'}
+                  color={isLocked ? Colors.success : Colors.warning}
+                  bg={isLocked ? Colors.successBg : Colors.warningBg}
+                  small
+                  dot
+                />
               </View>
-            )}
-            <Text style={styles.sectionLabel}>PAYOUT SEQUENCE</Text>
+            </Card>
+            <Text style={styles.sectionLabel}>Sequence</Text>
           </View>
         }
         renderItem={({ item: id, index }) => {
-          const m = getMember(id);
-          if (!m) { return null; }
+          const member = getMember(id);
+          if (!member) { return null; }
+
           return (
             <Card style={styles.memberCard}>
               <View style={styles.memberRow}>
                 <View style={styles.turnBadge}>
-                  <Text style={styles.turnNum}>#{index + 1}</Text>
+                  <Text style={styles.turnNum}>{index + 1}</Text>
                 </View>
                 <View style={styles.avatarWrap}>
-                  <Text style={styles.avatarText}>{m.name.charAt(0).toUpperCase()}</Text>
+                  <Text style={styles.avatarText}>{member.name.charAt(0).toUpperCase()}</Text>
                 </View>
                 <View style={styles.info}>
-                  <Text style={styles.memberName}>{m.name}</Text>
-                  {m.isOrganizer && (
-                    <Text style={styles.orgLabel}>Organizer</Text>
-                  )}
-                </View>
-                {!isLocked && (
-                  <View style={styles.reorderBtns}>
-                    <TouchableOpacity
-                      disabled={index === 0}
-                      onPress={() => moveUp(index)}
-                      style={[styles.reorderBtn, index === 0 && styles.dimmed]}>
-                      <Text style={styles.reorderBtnText}>↑</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      disabled={index === order.length - 1}
-                      onPress={() => moveDown(index)}
-                      style={[styles.reorderBtn, index === order.length - 1 && styles.dimmed]}>
-                      <Text style={styles.reorderBtnText}>↓</Text>
-                    </TouchableOpacity>
+                  <View style={styles.nameLine}>
+                    <Text style={styles.memberName} numberOfLines={1}>{member.name}</Text>
+                    {member.isOrganizer && (
+                      <Badge label="Organizer" color={Colors.accentDark} bg={Colors.accentBg} small />
+                    )}
                   </View>
+                  <Text style={styles.turnLabel}>Collects in cycle {index + 1}</Text>
+                </View>
+                {!isLocked ? (
+                  <View style={styles.reorderBtns}>
+                    <MiniButton label="Up" disabled={index === 0} onPress={() => moveUp(index)} />
+                    <MiniButton label="Down" disabled={index === order.length - 1} onPress={() => moveDown(index)} />
+                  </View>
+                ) : (
+                  <Badge label="Fixed" color={Colors.success} bg={Colors.successBg} small />
                 )}
-                {isLocked && <Text style={styles.lockIcon}>🔒</Text>}
               </View>
             </Card>
           );
         }}
         ListFooterComponent={
-          <View>
+          <View style={styles.footer}>
             {!isLocked && (
-              <Button
-                label="🔒 Lock This Order"
-                onPress={lockOrder}
-                variant="outline"
-                style={{ marginBottom: Spacing.sm }}
-              />
+              <Button label="Lock This Order" onPress={lockOrder} variant="outline" style={styles.lockBtn} />
             )}
-            <Button
-              label="Next: Preview Schedule →"
-              onPress={proceed}
-            />
-            <View style={styles.disclaimer}>
-              <Text style={styles.disclaimerText}>
-                This order determines when each person collects. Savings Circle is a planning tool only and does not manage or guarantee payments.
+            <Button label="Next: Preview Schedule" onPress={proceed} />
+            <View style={styles.notice}>
+              <Text style={styles.noticeText}>
+                This order only defines the generated schedule. Payments still happen outside the app.
               </Text>
             </View>
           </View>
@@ -198,90 +190,95 @@ export default function PayoutOrderScreen({ navigation }: Props) {
   );
 }
 
+function MiniButton({ label, onPress, disabled }: { label: string; onPress: () => void; disabled?: boolean }) {
+  return (
+    <TouchableOpacity disabled={disabled} onPress={onPress} style={[styles.miniBtn, disabled && styles.miniBtnDisabled]}>
+      <Text style={styles.miniBtnText}>{label}</Text>
+    </TouchableOpacity>
+  );
+}
+
+function Step({ label, active, done }: { label: string; active?: boolean; done?: boolean }) {
+  return (
+    <View style={[styles.step, done && styles.stepDone, active && styles.stepActive]}>
+      <Text style={[styles.stepText, active && styles.stepTextActive, done && styles.stepTextDone]}>{label}</Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.primary },
-  header: {
-    backgroundColor: Colors.primary,
-    paddingHorizontal: Spacing.md,
-    paddingTop: Spacing.sm,
-    paddingBottom: Spacing.xl,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-  },
-  backBtn: { padding: Spacing.xs },
-  backIcon: { fontSize: 22, color: '#fff', fontWeight: '700' },
-  headerTitle: { fontSize: FontSize.xl, fontWeight: '800', color: '#fff' },
-  headerSub: { fontSize: FontSize.sm, color: 'rgba(255,255,255,0.75)', marginTop: 2 },
-  shuffleBtn: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    borderRadius: Radius.full,
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: Spacing.xs,
-  },
-  shuffleText: { color: '#fff', fontWeight: '700', fontSize: FontSize.sm },
-  unlockBtn: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    borderRadius: Radius.full,
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: Spacing.xs,
-  },
-  unlockText: { color: '#fff', fontWeight: '700', fontSize: FontSize.sm },
+  safe: { flex: 1, backgroundColor: Colors.primaryDark },
   list: { padding: Spacing.md, paddingBottom: Spacing.xxl, backgroundColor: Colors.background, flexGrow: 1 },
-  lockedBanner: {
-    backgroundColor: Colors.successBg,
-    borderRadius: Radius.md,
-    padding: Spacing.sm,
-    marginBottom: Spacing.md,
+  stepBand: { flexDirection: 'row', gap: Spacing.xs, marginBottom: Spacing.lg },
+  step: {
+    flex: 1,
+    minHeight: 30,
+    borderRadius: Radius.sm,
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: Spacing.xs,
   },
-  lockedText: { fontSize: FontSize.sm, color: Colors.success, fontWeight: '600' },
-  sectionLabel: {
-    fontSize: FontSize.xs,
-    fontWeight: '700',
-    color: Colors.textSecondary,
-    letterSpacing: 0.8,
-    marginBottom: Spacing.sm,
-  },
+  stepDone: { backgroundColor: Colors.primaryBg, borderColor: Colors.primaryBorder },
+  stepActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
+  stepText: { fontSize: FontSize.xxs, fontWeight: '800', color: Colors.textSecondary },
+  stepTextActive: { color: Colors.textOnPrimary },
+  stepTextDone: { color: Colors.primaryDark },
+  orderSummary: { marginBottom: Spacing.md },
+  summaryTop: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: Spacing.md },
+  summaryTitle: { fontSize: FontSize.lg, fontWeight: '900', color: Colors.text },
+  summarySub: { fontSize: FontSize.sm, color: Colors.textSecondary, marginTop: 2, lineHeight: 19 },
+  sectionLabel: { fontSize: FontSize.xs, fontWeight: '900', color: Colors.textSecondary, marginBottom: Spacing.sm },
   memberCard: { marginBottom: Spacing.sm },
   memberRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
   turnBadge: {
-    width: 32,
-    height: 32,
-    borderRadius: Radius.full,
+    width: 34,
+    height: 34,
+    borderRadius: Radius.sm,
     backgroundColor: Colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  turnNum: { fontSize: FontSize.sm, fontWeight: '800', color: '#fff' },
+  turnNum: { fontSize: FontSize.sm, fontWeight: '900', color: Colors.textOnPrimary },
   avatarWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: Radius.full,
+    width: 38,
+    height: 38,
+    borderRadius: Radius.sm,
     backgroundColor: Colors.primaryBg,
+    borderWidth: 1,
+    borderColor: Colors.primaryBorder,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarText: { fontSize: FontSize.md, fontWeight: '700', color: Colors.primary },
+  avatarText: { fontSize: FontSize.md, fontWeight: '900', color: Colors.primaryDark },
   info: { flex: 1 },
-  memberName: { fontSize: FontSize.md, fontWeight: '700', color: Colors.text },
-  orgLabel: { fontSize: FontSize.xs, color: Colors.accentDark, fontWeight: '600' },
-  reorderBtns: { flexDirection: 'row', gap: 4 },
-  reorderBtn: {
-    width: 30,
-    height: 30,
-    borderRadius: Radius.full,
-    backgroundColor: Colors.primaryBg,
+  nameLine: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: Spacing.xs },
+  memberName: { flexShrink: 1, fontSize: FontSize.md, fontWeight: '900', color: Colors.text },
+  turnLabel: { fontSize: FontSize.sm, color: Colors.textSecondary, marginTop: 2 },
+  reorderBtns: { flexDirection: 'row', gap: Spacing.xs },
+  miniBtn: {
+    minHeight: 30,
+    borderRadius: Radius.sm,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    paddingHorizontal: Spacing.sm,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: Colors.surface,
   },
-  dimmed: { opacity: 0.3 },
-  reorderBtnText: { fontSize: 16, color: Colors.primary, fontWeight: '700' },
-  lockIcon: { fontSize: 18 },
-  disclaimer: {
+  miniBtnDisabled: { opacity: 0.35 },
+  miniBtnText: { fontSize: FontSize.xs, color: Colors.primaryDark, fontWeight: '900' },
+  footer: { marginTop: Spacing.md },
+  lockBtn: { marginBottom: Spacing.sm },
+  notice: {
     backgroundColor: Colors.accentBg,
-    borderRadius: Radius.md,
+    borderRadius: 8,
     padding: Spacing.md,
     marginTop: Spacing.md,
+    borderWidth: 1,
+    borderColor: Colors.accentBorder,
   },
-  disclaimerText: { fontSize: FontSize.sm, color: Colors.accentDark, lineHeight: 20 },
+  noticeText: { fontSize: FontSize.sm, color: Colors.accentDark, lineHeight: 20 },
 });

@@ -1,13 +1,14 @@
 import React from 'react';
 import {
   ActivityIndicator,
+  Pressable,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
+  StyleProp,
   ViewStyle,
 } from 'react-native';
-import { Colors, FontSize, Radius, Spacing } from '../../theme';
+import { Colors, FontSize, Radius, Shadow, Spacing } from '../../theme';
 
 interface ButtonProps {
   label: string;
@@ -17,7 +18,7 @@ interface ButtonProps {
   disabled?: boolean;
   loading?: boolean;
   icon?: React.ReactNode;
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
   fullWidth?: boolean;
 }
 
@@ -33,25 +34,26 @@ export default function Button({
   fullWidth = true,
 }: ButtonProps) {
   const isDisabled = disabled || loading;
+  const spinnerColor =
+    variant === 'outline' || variant === 'ghost'
+      ? Colors.primary
+      : Colors.textOnPrimary;
 
   return (
-    <TouchableOpacity
-      activeOpacity={0.78}
+    <Pressable
       onPress={onPress}
       disabled={isDisabled}
-      style={[
+      style={({ pressed }) => [
         styles.base,
         styles[variant],
         styles[size],
         fullWidth && styles.fullWidth,
+        pressed && !isDisabled && styles.pressed,
         isDisabled && styles.disabled,
         style,
       ]}>
       {loading ? (
-        <ActivityIndicator
-          color={variant === 'outline' || variant === 'ghost' ? Colors.primary : Colors.textOnPrimary}
-          size="small"
-        />
+        <ActivityIndicator color={spinnerColor} size="small" />
       ) : (
         <View style={styles.row}>
           {icon && <View style={styles.iconWrap}>{icon}</View>}
@@ -60,27 +62,31 @@ export default function Button({
           </Text>
         </View>
       )}
-    </TouchableOpacity>
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   base: {
-    borderRadius: Radius.lg,
+    minHeight: 44,
+    borderRadius: Radius.sm,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
+    borderWidth: 1,
+    borderColor: 'transparent',
   },
   fullWidth: { width: '100%' },
   row: { flexDirection: 'row', alignItems: 'center' },
   iconWrap: { marginRight: Spacing.sm },
-  label: { fontWeight: '700', letterSpacing: 0.3 },
+  label: { fontWeight: '800', letterSpacing: 0 },
+  pressed: { transform: [{ scale: 0.99 }], opacity: 0.88 },
 
   // variants
-  primary: { backgroundColor: Colors.primary },
-  secondary: { backgroundColor: Colors.accent },
-  outline: { backgroundColor: 'transparent', borderWidth: 2, borderColor: Colors.primary },
-  ghost: { backgroundColor: Colors.primaryBg },
+  primary: { backgroundColor: Colors.primary, ...Shadow.sm },
+  secondary: { backgroundColor: Colors.accent, ...Shadow.sm },
+  outline: { backgroundColor: Colors.surface, borderColor: Colors.primaryBorder },
+  ghost: { backgroundColor: Colors.primaryBg, borderColor: Colors.primaryBorder },
   danger: { backgroundColor: Colors.error },
 
   primaryLabel: { color: Colors.textOnPrimary },
@@ -90,13 +96,13 @@ const styles = StyleSheet.create({
   dangerLabel: { color: Colors.textOnPrimary },
 
   // sizes
-  sm: { paddingVertical: Spacing.xs + 2, paddingHorizontal: Spacing.md },
-  md: { paddingVertical: Spacing.sm + 4, paddingHorizontal: Spacing.lg },
-  lg: { paddingVertical: Spacing.md, paddingHorizontal: Spacing.xl },
+  sm: { minHeight: 36, paddingVertical: Spacing.xs + 2, paddingHorizontal: Spacing.md },
+  md: { minHeight: 46, paddingVertical: Spacing.sm + 2, paddingHorizontal: Spacing.lg },
+  lg: { minHeight: 54, paddingVertical: Spacing.md, paddingHorizontal: Spacing.xl },
 
   smLabel: { fontSize: FontSize.sm },
   mdLabel: { fontSize: FontSize.md },
   lgLabel: { fontSize: FontSize.lg },
 
-  disabled: { opacity: 0.45 },
+  disabled: { opacity: 0.45, shadowOpacity: 0, elevation: 0 },
 });

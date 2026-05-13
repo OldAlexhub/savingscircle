@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import {
+  StyleProp,
   StyleSheet,
   Text,
   TextInput,
@@ -14,7 +15,7 @@ interface InputProps extends TextInputProps {
   label: string;
   error?: string;
   hint?: string;
-  containerStyle?: ViewStyle;
+  containerStyle?: StyleProp<ViewStyle>;
   rightElement?: React.ReactNode;
   required?: boolean;
 }
@@ -77,8 +78,8 @@ export function PickerInput({
         {required && <Text style={styles.required}> *</Text>}
       </Text>
       <TouchableOpacity style={styles.pickerWrap} onPress={onPress} activeOpacity={0.7}>
-        <Text style={styles.pickerValue}>{value}</Text>
-        <Text style={styles.pickerChevron}>▾</Text>
+        <Text style={styles.pickerValue} numberOfLines={1}>{value}</Text>
+        <Text style={styles.pickerChevron}>v</Text>
       </TouchableOpacity>
       {!!hint && <Text style={styles.hint}>{hint}</Text>}
     </View>
@@ -89,18 +90,18 @@ const styles = StyleSheet.create({
   container: { marginBottom: Spacing.md },
   label: {
     fontSize: FontSize.sm,
-    fontWeight: '600',
+    fontWeight: '800',
     color: Colors.textSecondary,
     marginBottom: Spacing.xs,
-    letterSpacing: 0.3,
+    letterSpacing: 0,
   },
   required: { color: Colors.error },
   inputWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.surface,
-    borderRadius: Radius.md,
-    borderWidth: 1.5,
+    backgroundColor: Colors.surfaceSecondary,
+    borderRadius: Radius.sm,
+    borderWidth: 1,
     borderColor: Colors.border,
     paddingHorizontal: Spacing.md,
   },
@@ -114,19 +115,20 @@ const styles = StyleSheet.create({
     minHeight: 48,
   },
   right: { marginLeft: Spacing.sm },
-  errorText: { fontSize: FontSize.xs, color: Colors.error, marginTop: 4 },
-  hint: { fontSize: FontSize.xs, color: Colors.textLight, marginTop: 4 },
+  errorText: { fontSize: FontSize.xs, color: Colors.error, marginTop: 4, fontWeight: '700' },
+  hint: { fontSize: FontSize.xs, color: Colors.textLight, marginTop: 4, lineHeight: 17 },
   pickerWrap: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: Colors.surface,
-    borderRadius: Radius.md,
-    borderWidth: 1.5,
+    backgroundColor: Colors.surfaceSecondary,
+    borderRadius: Radius.sm,
+    borderWidth: 1,
     borderColor: Colors.border,
     paddingHorizontal: Spacing.md,
     minHeight: 48,
+    gap: Spacing.sm,
   },
-  pickerValue: { fontSize: FontSize.md, color: Colors.text, fontWeight: '500' },
-  pickerChevron: { fontSize: 18, color: Colors.textSecondary },
+  pickerValue: { flex: 1, fontSize: FontSize.md, color: Colors.text, fontWeight: '700' },
+  pickerChevron: { fontSize: FontSize.sm, color: Colors.textSecondary, fontWeight: '900' },
 });

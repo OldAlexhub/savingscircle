@@ -67,6 +67,6 @@ export function buildShareText(
   const rows = cycles
     .map(c => `Cycle ${c.cycleNumber} | ${c.dueDate} | ${c.receiverName} | ${formatCurrency(c.totalPayout, currency)}`)
     .join('\n');
-  const footer = '\n\n— Savings Circle App\nPlan and track rotating savings groups.\nThis is a planning tool only. It does not process payments.';
+  const footer = '\n\n- Savings Circle App\nPlan and track rotating savings groups.\nThis is a planning tool only. It does not process payments.';
   return header + rows + footer;
 }

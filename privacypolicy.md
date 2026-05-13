@@ -1,9 +1,9 @@
 # Privacy Policy — Savings Circle
 
-**App Name:** Savings Circle  
-**Developer:** Mohamed Gad / Old Alex Hub  
-**Package:** com.oldalexhub.savingscircle  
-**Effective Date:** May 2025  
+**App Name:** Savings Circle
+**Developer:** Mohamed Gad / Old Alex Hub
+**Package:** com.oldalexhub.savingscircle
+**Effective Date:** May 2025
 **Contact:** support@oldalexhub.com
 
 ---
@@ -120,7 +120,7 @@ If we update this privacy policy, the new version will be included in app update
 
 For questions, feedback, or support:
 
-**Email:** support@oldalexhub.com  
+**Email:** info@oldalexhub.com
 **Developer:** Mohamed Gad / Old Alex Hub
 
 ---
