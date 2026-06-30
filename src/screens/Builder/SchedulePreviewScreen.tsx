@@ -9,6 +9,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { maybeShowInterstitial } from '../../ads/interstitial';
 import Badge from '../../components/common/Badge';
 import Button from '../../components/common/Button';
 import Card from '../../components/common/Card';
@@ -69,6 +70,7 @@ export default function SchedulePreviewScreen({ navigation }: Props) {
         if (cancelled) { return; }
         setSaving(false);
         setPendingSave(null);
+        maybeShowInterstitial();
         navigation.popToTop();
       })
       .catch(() => {

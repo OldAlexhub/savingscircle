@@ -8,6 +8,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import NativeAdCard from '../../ads/NativeAdCard';
 import Badge from '../../components/common/Badge';
 import Card from '../../components/common/Card';
 import EmptyState from '../../components/common/EmptyState';
@@ -97,6 +98,7 @@ export default function ReportsHomeScreen({ navigation }: Props) {
               <Text style={styles.sectionLabel}>All circles</Text>
             </View>
           }
+          ListFooterComponent={<NativeAdCard />}
         />
       )}
     </SafeAreaView>

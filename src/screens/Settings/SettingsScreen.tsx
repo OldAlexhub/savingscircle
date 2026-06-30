@@ -18,7 +18,7 @@ import { clearAllData } from '../../store/storage';
 import { Colors, FontSize, Radius, Spacing } from '../../theme';
 
 const VERSION = '1.0.0';
-const BUILD = '1';
+const BUILD = '3';
 const SUPPORT_EMAIL = 'info@oldalexhub.com';
 
 export default function SettingsScreen() {
@@ -84,18 +84,19 @@ export default function SettingsScreen() {
             transfer money, verify members, guarantee payouts, or provide financial advice.
           </Text>
           <Text style={styles.disclaimerText}>
-            All data is stored locally on your device. The app does not require login or transmit your information.
+            Your savings circle records are stored locally on your device. Ads require network access and may use
+            Google AdMob to process ad-related device signals.
           </Text>
         </Card>
 
         <SectionTitle title="Privacy" />
         <Card>
           <PrivacyRow text="No account or login required" />
-          <PrivacyRow text="No personal data collected" />
-          <PrivacyRow text="No data sent to any server" />
-          <PrivacyRow text="Your data stays on your device" />
+          <PrivacyRow text="Savings circle records stay on your device" />
+          <PrivacyRow text="Google AdMob displays ads and may process ad identifiers" />
+          <PrivacyRow text="Ad consent tools are shown where required" />
           <PrivacyRow text="No location or contact access" />
-          <PrivacyRow text="No ads, analytics, or payment processing" />
+          <PrivacyRow text="No payment processing or financial account access" />
         </Card>
 
         <SectionTitle title="Also known as" />

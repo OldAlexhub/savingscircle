@@ -6,6 +6,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { enableScreens } from 'react-native-screens';
 
+import AppBannerAd from '../ads/AppBannerAd';
 import BuilderHomeScreen from '../screens/Builder/BuilderHomeScreen';
 import BuilderFormScreen from '../screens/Builder/BuilderFormScreen';
 import MembersScreen from '../screens/Builder/MembersScreen';
@@ -85,66 +86,72 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
 
   return (
-    <View style={[tabStyles.outer, { paddingBottom: Math.max(insets.bottom, Spacing.sm) }]}>
-      <View style={tabStyles.bar}>
-        {state.routes.map((route, index) => {
-          const focused = state.index === index;
-          const options = descriptors[route.key]?.options;
-          const label =
-            typeof options?.tabBarLabel === 'string'
-              ? options.tabBarLabel
-              : options?.title ?? route.name;
+    <View style={tabStyles.container}>
+      <AppBannerAd />
+      <View style={[tabStyles.outer, { paddingBottom: Math.max(insets.bottom, Spacing.sm) }]}>
+        <View style={tabStyles.bar}>
+          {state.routes.map((route, index) => {
+            const focused = state.index === index;
+            const options = descriptors[route.key]?.options;
+            const label =
+              typeof options?.tabBarLabel === 'string'
+                ? options.tabBarLabel
+                : options?.title ?? route.name;
 
-          function onPress() {
-            const event = navigation.emit({
-              type: 'tabPress',
-              target: route.key,
-              canPreventDefault: true,
-            });
+            function onPress() {
+              const event = navigation.emit({
+                type: 'tabPress',
+                target: route.key,
+                canPreventDefault: true,
+              });
 
-            if (!focused && !event.defaultPrevented) {
-              navigation.navigate(route.name, route.params);
+              if (!focused && !event.defaultPrevented) {
+                navigation.navigate(route.name, route.params);
+              }
             }
-          }
 
-          function onLongPress() {
-            navigation.emit({
-              type: 'tabLongPress',
-              target: route.key,
-            });
-          }
+            function onLongPress() {
+              navigation.emit({
+                type: 'tabLongPress',
+                target: route.key,
+              });
+            }
 
-          return (
-            <Pressable
-              key={route.key}
-              accessibilityRole="button"
-              accessibilityState={focused ? { selected: true } : {}}
-              accessibilityLabel={options?.tabBarAccessibilityLabel}
-              testID={options?.tabBarButtonTestID}
-              onPress={onPress}
-              onLongPress={onLongPress}
-              style={({ pressed }) => [
-                tabStyles.item,
-                focused && tabStyles.itemActive,
-                pressed && tabStyles.itemPressed,
-              ]}>
-              <View style={[tabStyles.iconWrap, focused && tabStyles.iconWrapActive]}>
-                <Text style={[tabStyles.icon, focused && tabStyles.iconActive]}>
-                  {TAB_ICONS[route.name]}
+            return (
+              <Pressable
+                key={route.key}
+                accessibilityRole="button"
+                accessibilityState={focused ? { selected: true } : {}}
+                accessibilityLabel={options?.tabBarAccessibilityLabel}
+                testID={options?.tabBarButtonTestID}
+                onPress={onPress}
+                onLongPress={onLongPress}
+                style={({ pressed }) => [
+                  tabStyles.item,
+                  focused && tabStyles.itemActive,
+                  pressed && tabStyles.itemPressed,
+                ]}>
+                <View style={[tabStyles.iconWrap, focused && tabStyles.iconWrapActive]}>
+                  <Text style={[tabStyles.icon, focused && tabStyles.iconActive]}>
+                    {TAB_ICONS[route.name]}
+                  </Text>
+                </View>
+                <Text style={[tabStyles.label, focused && tabStyles.labelActive]} numberOfLines={1}>
+                  {label}
                 </Text>
-              </View>
-              <Text style={[tabStyles.label, focused && tabStyles.labelActive]} numberOfLines={1}>
-                {label}
-              </Text>
-            </Pressable>
-          );
-        })}
+              </Pressable>
+            );
+          })}
+        </View>
       </View>
     </View>
   );
 }
 
 const tabStyles = StyleSheet.create({
+  container: {
+    backgroundColor: Colors.background,
+  },
   outer: {
     backgroundColor: Colors.background,
     paddingHorizontal: Spacing.md,
